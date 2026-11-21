@@ -5,7 +5,7 @@
 
 An installable web app (PWA) to manually track bitcoin purchases and sales: average price, current value, profit or loss, FIFO-based realised gains, charts, calculators and push alerts. Each user has a private account. Everything runs on **free tiers only** (Firebase Spark + GitHub Actions), with no credit card.
 
-**Live demo:** _add the Hosting URL here after your first deploy (`https://<your-project-id>.web.app`). The login screen has a "Probar sin cuenta" button that loads a fictitious portfolio._
+**Live demo:** https://bitcoin-tracker-4aac9.web.app (the login screen has a "Probar sin cuenta" button that loads a fictitious portfolio).
 
 > **Resumen en español.** App instalable en el iPhone (Safari → «Añadir a pantalla de inicio») para apuntar a mano compras y ventas de bitcoin. Calcula precio medio, valor, ganancia y rentabilidad, ventas por FIFO (criterio de Hacienda), calculadoras, objetivos y avisos push. Cada usuario tiene su cuenta y sus datos son privados gracias a las reglas de Firestore. Todo en el plan gratuito, sin tarjeta. Los avisos son información, nunca recomendaciones de inversión. Las secciones «Cómo ejecutarla», «Despliegue» y «Secretos» explican cómo ponerla en marcha.
 
