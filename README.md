@@ -64,7 +64,7 @@ The client never calls CoinGecko: the jobs write `mercado/precio` and `mercado/h
 2. Only the public Firebase config is in the client; the service-account key lives in GitHub Secrets and is used only by scheduled jobs (`permissions: contents: read`, pinned action SHAs, never on `pull_request`).
 3. Firestore rules: owner-only access on every collection, verified email required, everything else denied; `mercado/*` read-only for clients.
 4. Server-side validation in the rules, mirrored client-side with Zod.
-5. Firebase Auth rate limiting stays on; App Check with reCAPTCHA v3 is wired in (set `VITE_RECAPTCHA_SITE_KEY` and enforce it in the console).
+5. Firebase Auth rate limiting stays on; App Check with reCAPTCHA Enterprise is wired in (set `VITE_RECAPTCHA_SITE_KEY` and enforce it in the console).
 6. No string-built queries (SDK only), no `dangerouslySetInnerHTML` (ESLint rule forbids it).
 7. Passwords handled by Firebase Auth; minimum 10 characters, checked against HaveIBeenPwned with k-anonymity (only 5 hash characters leave the device).
 8. Default Firebase token persistence (IndexedDB); nothing is copied to `localStorage` except the public WebAuthn credential id for the optional lock.
@@ -93,7 +93,7 @@ To run the app against the emulators set `VITE_USE_EMULATOR=true`, then `npx fir
 1. Create a Firebase project and keep the **Spark** plan. Enable **Authentication → Email/Password**, **Firestore** (region `eur3` or `europe-west1`) and **Cloud Messaging**.
 2. Copy `.firebaserc.example` to `.firebaserc` with your project id; fill `.env` from *Project settings → Your apps → Web app*, and the Web Push key (VAPID) into `VITE_FIREBASE_VAPID_KEY`.
 3. In Authentication → Settings → Authorized domains keep only your Hosting domain and `localhost`.
-4. Create a reCAPTCHA v3 key, register it in App Check, set `VITE_RECAPTCHA_SITE_KEY` and enforce App Check for Firestore.
+4. Create a reCAPTCHA Enterprise key, register it in App Check, set `VITE_RECAPTCHA_SITE_KEY` and enforce App Check for Firestore.
 5. Deploy:
 
 ```bash
