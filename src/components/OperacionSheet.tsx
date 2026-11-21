@@ -123,7 +123,7 @@ export default function OperacionSheet({ tipo, inicial, plantilla, onCerrar }: P
               </>
             )}
             <p className={`num ${preview.pctCom > UMBRAL_COMISION_ALTA ? 'warn' : ''}`}>
-              Comisión: {porcentaje(preview.pctCom)}{preview.pctCom > UMBRAL_COMISION_ALTA ? ' · alta (más del 3 %)' : ''}
+              Comisión: {porcentaje(preview.pctCom)}{preview.pctCom > UMBRAL_COMISION_ALTA && v.avisos.ajustes.comisionAlta?.activo !== false ? ' · alta (más del 3 %)' : ''}
             </p>
             {!preview.excede && preview.medio > 0 && <p className="num">Precio medio tras guardar: {dinero(preview.medio, f.moneda)}</p>}
           </div>
