@@ -75,3 +75,5 @@ th:first-child, td:first-child { text-align: left; }
 .hide-num { letter-spacing: 2px; }
 @media (min-width: 800px) { .app { padding-top: 28px; } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+td, th { white-space: nowrap; } td { font-size: 12px; } .card table { min-width: 0; }
+.stack > p, .card > p { margin: 0; }

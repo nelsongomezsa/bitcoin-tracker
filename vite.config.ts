@@ -12,6 +12,7 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      injectManifest: { maximumFileSizeToCacheInBytes: 3 * 1024 * 1024 },
       manifest: {
         name: 'Bitcoin Tracker',
         short_name: 'BTC Tracker',
@@ -30,6 +31,7 @@ export default defineConfig({
       },
     }),
   ],
+  build: { chunkSizeWarningLimit: 900 },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'jobs/**/*.test.mjs'],

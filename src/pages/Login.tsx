@@ -8,6 +8,8 @@ import { emailSchema, passwordSchema } from '../lib/schemas'
 import { contrasenaFiltrada } from '../lib/hibp'
 import { mensajeError } from '../lib/errores'
 import { useAuth } from '../state/auth'
+import { completarLoginTotp, mfaHabilitado } from '../lib/mfa'
+import type { MultiFactorError } from 'firebase/auth'
 import Instalar from '../components/Instalar'
 
 type Modo = 'entrar' | 'registro' | 'recuperar'
@@ -21,6 +23,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  const [mfa, setMfa] = useState<MultiFactorError | null>(null)
+  const [codigo, setCodigo] = useState('')
 
   if (user || demo) return <Navigate to="/" replace />
 
@@ -28,6 +32,10 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setInfo('')
+    if (mfa) {
+      try { await completarLoginTotp(mfa, codigo) } catch (err) { setError(mensajeError(err, 'Código incorrecto.')) }
+      return
+    }
     if (!auth) return setError('La app no está conectada a Firebase todavía. Puedes probar el modo demo.')
     const correo = emailSchema.safeParse(email)
     if (!correo.success) return setError(correo.error.issues[0].message)
@@ -50,7 +58,8 @@ export default function Login() {
         }
       }
     } catch (err) {
-      setError(mensajeError(err))
+      if (mfaHabilitado && (err as { code?: string }).code === 'auth/multi-factor-auth-required') setMfa(err as MultiFactorError)
+      else setError(mensajeError(err))
     } finally {
       setOcupado(false)
     }
@@ -83,6 +92,7 @@ export default function Login() {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={modo === 'registro' ? 'new-password' : 'current-password'} required />
           </label>
         )}
+        {mfa && <label>Código de tu app autenticadora<input inputMode="numeric" maxLength={6} value={codigo} onChange={(e) => setCodigo(e.target.value)} autoComplete="one-time-code" /></label>}
         {error && <p className="err" role="alert">{error}</p>}
         {info && <p className="gain" role="status">{info}</p>}
         <button className="btn-primary" disabled={ocupado} type="submit">{ocupado ? 'Un momento…' : titulo}</button>

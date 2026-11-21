@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './state/auth'
 import { DataProvider } from './state/data'
@@ -6,9 +7,12 @@ import Login from './pages/Login'
 import VerificarCorreo from './pages/VerificarCorreo'
 import Inicio from './pages/Inicio'
 import Operaciones from './pages/Operaciones'
-import Estadisticas from './pages/Estadisticas'
-import Plan from './pages/Plan'
-import Avisos from './pages/Avisos'
+const Estadisticas = lazy(() => import('./pages/Estadisticas'))
+const Plan = lazy(() => import('./pages/Plan'))
+const Avisos = lazy(() => import('./pages/Avisos'))
+const Ajustes = lazy(() => import('./pages/Ajustes'))
+const Calculadoras = lazy(() => import('./pages/Calculadoras'))
+import Bloqueo from './components/Bloqueo'
 
 export default function App() {
   const { user, demo, cargando } = useAuth()
@@ -23,7 +27,9 @@ export default function App() {
   }
   if (user && !demo && !user.emailVerified) return <VerificarCorreo />
   return (
+    <Bloqueo>
     <DataProvider>
+      <Suspense fallback={<main className="app"><p className="muted" role="status">Cargando…</p></main>}>
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Inicio />} />
@@ -31,9 +37,13 @@ export default function App() {
           <Route path="estadisticas" element={<Estadisticas />} />
           <Route path="plan" element={<Plan />} />
           <Route path="avisos" element={<Avisos />} />
+          <Route path="ajustes" element={<Ajustes />} />
+          <Route path="calculadoras" element={<Calculadoras />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      </Suspense>
     </DataProvider>
+    </Bloqueo>
   )
 }
