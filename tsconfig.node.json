@@ -1,13 +1,24 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["vite.config.ts", "vitest.rules.config.ts", "tests"]
+  "include": [
+    "vite.config.ts",
+    "vitest.rules.config.ts",
+    "tests",
+    "src/**/__tests__",
+    "src/lib/calculos.ts",
+    "src/config"
+  ]
 }

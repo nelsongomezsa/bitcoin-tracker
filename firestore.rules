@@ -1,0 +1,95 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───── Helpers ─────
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return verified() && request.auth.uid == userId; }
+
+    function esMoneda(v) { return v in ['EUR', 'USD', 'AUD']; }
+    function esNumero(v) { return v is number; }
+    function textoMax(v, n) { return v is string && v.size() <= n; }
+    function fechaValida(f) {
+      return f is string
+        && f.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && timestamp.date(int(f.split('-')[0]), int(f.split('-')[1]), int(f.split('-')[2]))
+           <= request.time + duration.value(1, 'd');
+    }
+
+    // ───── Datos de mercado: lectura para logueados, escritura solo desde la cuenta de servicio (Admin SDK) ─────
+    match /mercado/{doc} {
+      allow read: if verified();
+      allow write: if false;
+    }
+
+    // ───── Todo lo del usuario cuelga de users/{uid} ─────
+    match /users/{userId} {
+      function perfilValido(d) {
+        return d.keys().hasOnly(['nombre', 'monedaPreferida', 'modoPrivado', 'creado'])
+          && textoMax(d.nombre, 60)
+          && esMoneda(d.monedaPreferida)
+          && d.modoPrivado is bool
+          && d.creado is timestamp;
+      }
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && perfilValido(request.resource.data);
+      // El borrado de cuenta lo hace el propio usuario desde el cliente.
+      allow delete: if isOwner(userId);
+
+      match /operaciones/{opId} {
+        function opValida(d) {
+          return d.keys().hasOnly(['tipo', 'fecha', 'cantidad', 'comision', 'precio', 'moneda', 'plataforma', 'nota', 'creado', 'editado'])
+            && d.keys().hasAll(['tipo', 'fecha', 'cantidad', 'comision', 'precio', 'moneda', 'creado'])
+            && d.tipo in ['compra', 'venta']
+            && fechaValida(d.fecha)
+            && esNumero(d.cantidad) && d.cantidad > 0 && d.cantidad < 10000000
+            && esNumero(d.comision) && d.comision >= 0 && d.comision < d.cantidad
+            && esNumero(d.precio) && d.precio > 0 && d.precio < 100000000
+            && esMoneda(d.moneda)
+            && (!('plataforma' in d) || textoMax(d.plataforma, 60))
+            && (!('nota' in d) || textoMax(d.nota, 200))
+            && d.creado is timestamp
+            && (!('editado' in d) || d.editado is timestamp);
+        }
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && opValida(request.resource.data);
+        allow update: if isOwner(userId) && opValida(request.resource.data)
+                      && request.resource.data.creado == resource.data.creado;
+      }
+
+      match /plan/config {
+        function planValido(d) {
+          return d.keys().hasOnly(['capital', 'nivelesClave', 'dca', 'objetivos'])
+            && esNumero(d.capital) && d.capital >= 0 && d.capital < 1000000000
+            && d.nivelesClave is list && d.nivelesClave.size() <= 20
+            && d.dca is map
+            && d.dca.keys().hasOnly(['inicio', 'porcentajeSemanal', 'semanas'])
+            && fechaValida(d.dca.inicio)
+            && esNumero(d.dca.porcentajeSemanal) && d.dca.porcentajeSemanal >= 0 && d.dca.porcentajeSemanal <= 100
+            && d.dca.semanas is int && d.dca.semanas >= 0 && d.dca.semanas <= 520
+            && (!('objetivos' in d) || (d.objetivos is map && d.objetivos.keys().size() <= 10));
+        }
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && planValido(request.resource.data);
+      }
+
+      match /avisos/config {
+        function avisosValidos(d) {
+          return d.keys().hasOnly(['ajustes', 'tokens', 'enviados'])
+            && d.ajustes is map && d.ajustes.keys().size() <= 30
+            && (!('tokens' in d) || (d.tokens is list && d.tokens.size() <= 10))
+            && (!('enviados' in d) || d.enviados is map);
+        }
+        allow read, delete: if isOwner(userId);
+        // `enviados` solo lo escribe el job (Admin SDK); el cliente no puede tocarlo.
+        allow create, update: if isOwner(userId) && avisosValidos(request.resource.data)
+          && request.resource.data.get('enviados', null) == (resource == null ? null : resource.data.get('enviados', null));
+      }
+    }
+
+    // Cualquier otra ruta, denegada.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
