@@ -3,7 +3,7 @@ import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth'
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator, type Firestore,
 } from 'firebase/firestore'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 
 // La configuración pública de Firebase no es secreta: la seguridad la dan las reglas de Firestore y App Check.
 const cfg = {
@@ -28,7 +28,7 @@ if (firebaseConfigurado) {
   if (import.meta.env.DEV && import.meta.env.VITE_APPCHECK_DEBUG) {
     ;(self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true
   }
-  if (siteKey) initializeAppCheck(app, { provider: new ReCaptchaV3Provider(siteKey), isTokenAutoRefreshEnabled: true })
+  if (siteKey) initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(siteKey), isTokenAutoRefreshEnabled: true })
 
   // Persistencia por defecto del SDK (IndexedDB). No se guarda ningún token a mano.
   auth = getAuth(app)
