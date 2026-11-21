@@ -1,11 +1,13 @@
-import admin from 'firebase-admin'
+import { initializeApp, cert } from 'firebase-admin/app'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
+import { getMessaging } from 'firebase-admin/messaging'
 import { claveSegura } from './alertas.mjs'
 
 export function iniciarAdmin() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT
   if (!raw) throw new Error('Falta el secret FIREBASE_SERVICE_ACCOUNT')
-  admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) })
-  return { db: admin.firestore(), messaging: admin.messaging() }
+  initializeApp({ credential: cert(JSON.parse(raw)) })
+  return { db: getFirestore(), messaging: getMessaging() }
 }
 
 export async function getJson(url) {
@@ -30,7 +32,6 @@ export async function enviarPush(messaging, tokens, { titulo, texto }) {
 
 /** Procesa a todos los usuarios con avisos activos. `generar(userDoc)` devuelve la lista de avisos. */
 export async function procesarUsuarios({ db, messaging }, generar, filtrarRepetidos) {
-  const FieldValue = admin.firestore.FieldValue
   const snap = await db.collectionGroup('avisos').get()
   let usuarios = 0, push = 0
   for (const d of snap.docs) {

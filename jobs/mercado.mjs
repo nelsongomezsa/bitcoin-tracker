@@ -1,5 +1,5 @@
 // Cada 15 min: actualiza el precio, el índice de miedo y codicia, y envía los avisos de mercado.
-import admin from 'firebase-admin'
+import { FieldValue } from 'firebase-admin/firestore'
 import { getJson, iniciarAdmin, procesarUsuarios } from './lib.mjs'
 import { avisosDeMercado, filtrarRepetidos } from './alertas.mjs'
 
@@ -36,7 +36,7 @@ async function main() {
     cambio24h: (eur.price_change_percentage_24h_in_currency ?? eur.price_change_percentage_24h ?? 0) / 100,
     cambio7d: (eur.price_change_percentage_7d_in_currency ?? 0) / 100,
     miedoCodicia: fng ?? anterior?.miedoCodicia ?? null,
-    actualizado: admin.firestore.FieldValue.serverTimestamp(),
+    actualizado: FieldValue.serverTimestamp(),
   }
   await ref.set(nuevo)
   console.log('Precio actualizado')
