@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import VerificarCorreo from './pages/VerificarCorreo'
 import Inicio from './pages/Inicio'
+import Operaciones from './pages/Operaciones'
 
 export default function App() {
   const { user, demo, cargando } = useAuth()
@@ -23,6 +24,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Inicio />} />
+          <Route path="operaciones" element={<Operaciones />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
