@@ -135,6 +135,9 @@ describe('perfil, plan y avisos', () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: { nivel: { activo: true } }, tokens: ['t1'] }))
     await assertFails(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, enviados: { nivel: 1 } }))
   })
+  it('avisos: el cliente puede guardar su resumen para el job', async () => {
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, resumen: { precioMedio: 50000, btc: 0.1 } }))
+  })
   it('borrar la cuenta: el dueño borra sus documentos', async () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil()))
     await assertSucceeds(deleteDoc(doc(ana(), 'users/ana')))

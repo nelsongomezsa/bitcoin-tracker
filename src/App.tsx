@@ -6,6 +6,8 @@ import Login from './pages/Login'
 import VerificarCorreo from './pages/VerificarCorreo'
 import Inicio from './pages/Inicio'
 import Operaciones from './pages/Operaciones'
+import Estadisticas from './pages/Estadisticas'
+import Plan from './pages/Plan'
 
 export default function App() {
   const { user, demo, cargando } = useAuth()
@@ -25,6 +27,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Inicio />} />
           <Route path="operaciones" element={<Operaciones />} />
+          <Route path="estadisticas" element={<Estadisticas />} />
+          <Route path="plan" element={<Plan />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

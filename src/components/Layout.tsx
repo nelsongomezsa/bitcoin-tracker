@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useDatos } from '../state/data'
 import { horaCorta } from '../lib/format'
+import SincronizarAvisos from './SincronizarAvisos'
 
 const ICONOS: Record<string, string> = {
   inicio: 'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
@@ -34,6 +35,7 @@ export default function Layout() {
         </div>
       )}
       <Outlet />
+      <SincronizarAvisos />
       <nav className="nav" aria-label="Navegación principal">
         {items.map(([to, label, ic]) => (
           <NavLink key={to} to={to} end={to === '/'}>

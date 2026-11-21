@@ -77,10 +77,11 @@ service cloud.firestore {
 
       match /avisos/config {
         function avisosValidos(d) {
-          return d.keys().hasOnly(['ajustes', 'tokens', 'enviados'])
+          return d.keys().hasOnly(['ajustes', 'tokens', 'enviados', 'resumen'])
             && d.ajustes is map && d.ajustes.keys().size() <= 30
             && (!('tokens' in d) || (d.tokens is list && d.tokens.size() <= 10))
-            && (!('enviados' in d) || d.enviados is map);
+            && (!('enviados' in d) || d.enviados is map)
+            && (!('resumen' in d) || d.resumen is map);
         }
         allow read, delete: if isOwner(userId);
         // `enviados` solo lo escribe el job (Admin SDK); el cliente no puede tocarlo.

@@ -102,7 +102,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
         setObjetivos((d.objetivos as Objetivos) ?? {})
       }),
       onSnapshot(doc(db, `${base}/avisos/config`), (s) => {
-        if (s.exists()) setAvisos({ ajustes: s.data().ajustes ?? {}, tokens: s.data().tokens ?? [] })
+        if (s.exists()) setAvisos({ ajustes: s.data().ajustes ?? {}, tokens: s.data().tokens ?? [], resumen: s.data().resumen })
       }),
       onSnapshot(doc(db, 'mercado/precio'), (s) => {
         if (!s.exists()) return
@@ -140,7 +140,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
       await setDoc(doc(db, `users/${uid}/plan/config`), v)
     },
     guardarAvisos: async (a) => {
-      if (db) await setDoc(doc(db, `users/${uid}/avisos/config`), { ajustes: a.ajustes, tokens: a.tokens }, { merge: true })
+      if (db) await setDoc(doc(db, `users/${uid}/avisos/config`), limpiar({ ajustes: a.ajustes, tokens: a.tokens, resumen: a.resumen }), { merge: true })
     },
     guardarPerfil: async (p) => {
       if (!db) return

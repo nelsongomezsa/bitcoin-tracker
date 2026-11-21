@@ -1,0 +1,22 @@
+name: Mantenimiento
+
+# GitHub desactiva los workflows programados tras 60 días sin actividad en el repo.
+# Un commit vacío al mes mantiene activos los crons de precio y avisos.
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  latido:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "Mantenimiento mensual: mantener activos los workflows programados"
+          git push

@@ -18,6 +18,16 @@ export type ClaveAviso =
 export interface AvisosDoc {
   ajustes: Partial<Record<ClaveAviso, AjusteAviso>>
   tokens: string[]
+  /** Datos mínimos (en EUR) que el cliente deja para que el job evalúe avisos sin leer todas las operaciones. */
+  resumen?: ResumenAvisos
+}
+
+export interface ResumenAvisos {
+  precioMedio: number
+  btc: number
+  nivelesPendientes: number[]
+  precioObjetivo: number | null
+  mesAnterior: { mes: string; metido: number; medioAntes: number; medioDespues: number; rentabilidad: number } | null
 }
 
 export interface Objetivos {
