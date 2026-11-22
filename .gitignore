@@ -4,6 +4,7 @@ datos-privados/
 !.env.example
 node_modules/
 dist/
+dist-emu/
 .firebase/
 *.log
 .DS_Store
@@ -12,6 +13,7 @@ coverage/
 serviceAccount*.json
 *-firebase-adminsdk-*.json
 dev-dist/
+dist-emu/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log

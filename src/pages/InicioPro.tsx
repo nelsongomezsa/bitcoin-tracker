@@ -102,7 +102,7 @@ export default function InicioPro() {
 
       {pestana === 'operaciones' && (
         <section aria-label="Historial de operaciones">
-          {filas.length === 0 ? <p className="muted">Todavía no has apuntado ninguna operación.</p> : (
+          {filas.length === 0 ? <p className="muted">Aún no has apuntado ninguna compra. Usa «Apuntar compra».</p> : (
             <table className="pro-historial">
               <thead><tr><th scope="col">Tipo y fecha</th><th scope="col" className="r">Precio y BTC</th><th scope="col" className="r">Importe y PnL</th></tr></thead>
               <tbody>

@@ -16,7 +16,8 @@
     "job:diario": "node jobs/diario.mjs",
     "prepare": "node scripts/install-hooks.mjs",
     "auditoria": "vitest run src/lib/__tests__/auditoria.test.ts",
-    "auditoria:web": "vitest run --config scripts/auditoria/vitest.web.config.ts"
+    "auditoria:web": "vitest run --config scripts/auditoria/vitest.web.config.ts",
+    "auditoria:vacia": "firebase emulators:exec --only auth,firestore --project demo-bitcoin-tracker \"node scripts/auditoria/vacia-emulador.mjs\""
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",

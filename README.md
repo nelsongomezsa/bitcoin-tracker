@@ -18,6 +18,7 @@ Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Exc
 Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.md).
 
 ### 23 de noviembre de 2026
+- **Corrección del gráfico de Inicio.** Con el precio en vivo, el gráfico se rehacía cada segundo y se veía rayado o «se volvía loco» al moverlo con el dedo. Ahora se crea una sola vez y solo se actualiza el último punto; además, en el móvil el scroll vertical mueve la página y el gráfico solo se desplaza en horizontal. «Abrir gráfico pro» abre siempre, y una cuenta nueva sin compras ve «Aún no has apuntado ninguna compra» con su botón y, debajo, el precio de BTC.
 - **Trading.** Apunta trades largos y cortos y mira cuánto ganas. Aparece por defecto en la barra de abajo (se puede apagar en Ajustes). Cada trade enseña lo ganado, lo que vale hoy y el total acumulado tras él. El % y los BTC ganados se escriben a mano y mandan sobre el cálculo, que queda como sugerencia. Incluye la **«Media por trade»**, un resumen **«Por mes»**, gráficas y avisos de trades abiertos.
 - **Importar desde Excel o CSV.** Comprueba fila a fila que el «Total histórico» cuadra con la suma de lo ganado en cada trade y avisa en la vista previa si alguna fila no cuadra.
 - **Velas y precio en directo.** El Gráfico pro enseña velas de 1 y 5 minutos en directo y el precio de toda la app se actualiza en vivo mientras está abierta.

@@ -11,6 +11,7 @@ import {
 import { avisosSchema, operacionSchema, perfilSchema, planSchema, tradeSchema } from '../lib/schemas'
 import type { Trade, TradeGuardable } from '../lib/trading'
 import { guardarVistaLocal, leerVistaLocal } from '../lib/modoVista'
+import { interruptorPrueba } from '../lib/pruebas'
 import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
   AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, velasSinteticas, historicoDemo, mercadoDemo, operacionesDemo, planDemo, tradesDemo,
@@ -34,10 +35,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 // ───────────── Modo demo: todo en memoria, nada llega a Firestore ─────────────
 function DemoProvider({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil>(() => ({ ...PERFIL_DEMO, vista: leerVistaLocal() }))
-  const [operaciones, setOperaciones] = useState<Operacion[]>(() => operacionesDemo())
-  const [trades, setTrades] = useState<Trade[]>(() => tradesDemo())
-  const [plan, setPlan] = useState<Plan>(() => planDemo())
-  const [objetivos, setObjetivos] = useState<Objetivos>(OBJETIVOS_DEMO)
+  const [operaciones, setOperaciones] = useState<Operacion[]>(() => (interruptorPrueba('demo-vacia') ? [] : operacionesDemo()))
+  const [trades, setTrades] = useState<Trade[]>(() => (interruptorPrueba('demo-vacia') ? [] : tradesDemo()))
+  const [plan, setPlan] = useState<Plan>(() => (interruptorPrueba('demo-vacia') ? PLAN_VACIO : planDemo()))
+  const [objetivos, setObjetivos] = useState<Objetivos>(() => (interruptorPrueba('demo-vacia') ? {} : OBJETIVOS_DEMO))
   const [avisos, setAvisos] = useState<AvisosDoc>(AVISOS_DEMO)
   const mercado = useMemo(() => mercadoDemo(), [])
   const historico = useMemo(() => historicoDemo(), [])

@@ -76,3 +76,26 @@ describe('velas de una serie', () => {
     expect(velasDeSerie([], 7)).toEqual([])
   })
 })
+
+import { soloCambiaLaUltima, velasCrecientes } from '../velas'
+describe('velas del directo: update o setData', () => {
+  const serie = (n: number) => Array.from({ length: n }, (_, i) => v(i * 60, 100 + i))
+  it('velasCrecientes quita repetidos y desordenadas', () => {
+    expect(velasCrecientes([v(1, 1), v(1, 2), v(3, 3), v(2, 9), v(4, 4)]).map((x) => x.time)).toEqual([1, 3, 4])
+    expect(velasCrecientes([])).toEqual([])
+  })
+  it('una vela en curso que cambia o una vela nueva al final: basta update()', () => {
+    const a = serie(50)
+    expect(soloCambiaLaUltima(a, [...a.slice(0, 49), v(49 * 60, 999)])).toBe(true) // cambia la última
+    expect(soloCambiaLaUltima(a, [...a, v(50 * 60, 5)])).toBe(true) // empieza otra vela
+  })
+  it('cualquier otro cambio exige setData(): otra moneda, datos nuevos, saltos o series más cortas', () => {
+    const a = serie(50)
+    expect(soloCambiaLaUltima(a, a.map((x) => ({ ...x, open: x.open * 1.6, high: x.high * 1.6, low: x.low * 1.6, close: x.close * 1.6 })))).toBe(false)
+    expect(soloCambiaLaUltima(a, [...a.slice(0, 40), ...a.slice(41)])).toBe(false)
+    expect(soloCambiaLaUltima(a, [...a, v(50 * 60, 1), v(51 * 60, 1)])).toBe(false)
+    expect(soloCambiaLaUltima(a, a.slice(0, 49))).toBe(false)
+    expect(soloCambiaLaUltima(serie(1), serie(2))).toBe(false)
+    expect(soloCambiaLaUltima(a, a.slice(1).concat(v(50 * 60, 1)))).toBe(false) // ventana desplazada
+  })
+})

@@ -76,3 +76,19 @@ export function velasDeSerie(puntos: { fecha: string; valor: number }[], tamano 
   }
   return out
 }
+
+/** Tiempos estrictamente crecientes y sin repetidos (el gráfico lo exige): conserva la primera de cada tiempo y descarta las desordenadas. */
+export function velasCrecientes(velas: Vela[]): Vela[] {
+  return velas.filter((x, i) => i === 0 || x.time > velas[i - 1].time)
+}
+
+/**
+ * ¿Basta con actualizar la última vela (update) en lugar de volver a pintar todo (setData)?
+ * Sí cuando la serie nueva es la anterior con la última vela cambiada, o con una vela más al final.
+ */
+export function soloCambiaLaUltima(prev: Vela[], next: Vela[]): boolean {
+  if (prev.length < 2 || next.length < prev.length || next.length - prev.length > 1) return false
+  if (next[0].time !== prev[0].time) return false
+  const i = prev.length - 2 // la penúltima debe seguir igual
+  return next[i].time === prev[i].time && next[i].close === prev[i].close && next[i].open === prev[i].open && next[i].high === prev[i].high && next[i].low === prev[i].low
+}

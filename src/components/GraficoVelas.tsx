@@ -6,11 +6,12 @@ import {
 import { useVista } from '../state/vista'
 import { useMercadoDoc } from '../state/data'
 import { suscribirOhlc } from '../lib/kraken'
-import { aVelas, DOC_VELAS, factorDesdeEur, fusionarVelas, mediaMovil, TEMPORALIDADES, type FilaVela, type Temporalidad, type Vela } from '../lib/velas'
+import { aVelas, DOC_VELAS, factorDesdeEur, fusionarVelas, mediaMovil, soloCambiaLaUltima, TEMPORALIDADES, velasCrecientes, type FilaVela, type Temporalidad, type Vela } from '../lib/velas'
 import { construirMarcas, type Marca } from '../lib/marcas'
 import { velasSinteticas } from '../state/demoData'
 import { proximoNivel } from '../lib/calculos'
 import OperacionSheet from './OperacionSheet'
+import { registrarPrueba } from '../lib/pruebas'
 import TradeSheet from './TradeSheet'
 
 const IND = [['ma7', 'MA(7)'], ['ma25', 'MA(25)'], ['ma99', 'MA(99)'], ['compras', 'Mis compras'], ['trades', 'Mis trades'], ['media', 'Precio medio'], ['volumen', 'Volumen']] as const
@@ -66,7 +67,13 @@ function useVelasDirecto(activo: boolean, moneda: 'EUR' | 'USD', intervalo: 1 | 
       })
     return () => { vivo = false; baja?.() }
   }, [activo, moneda, intervalo, demo])
-  useEffect(() => { if (activo && velas.length && estado === 'directo') guardarCache(moneda, intervalo, velas) }, [activo, velas, estado, moneda, intervalo])
+  // La caché local se escribe como mucho cada 15 s (no en cada mensaje del directo).
+  const ultimaCache = useRef(0)
+  useEffect(() => {
+    if (!activo || !velas.length || estado !== 'directo' || Date.now() - ultimaCache.current < 15_000) return
+    ultimaCache.current = Date.now()
+    guardarCache(moneda, intervalo, velas)
+  }, [activo, velas, estado, moneda, intervalo])
   return { velas, estado }
 }
 
@@ -90,9 +97,11 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
   const [seleccion, setSeleccion] = useState<Marca[] | null>(null)
   const [edicion, setEdicion] = useState<null | { tipo: 'operacion' | 'trade'; id: string }>(null)
   const [leyenda, setLeyenda] = useState<Leyenda | null>(null)
-  const { moneda, precios, res } = v
+  const { moneda, res } = v
   const monedaKraken: 'EUR' | 'USD' = moneda === 'USD' ? 'USD' : 'EUR'
-  const factor = moneda === 'AUD' ? factorDesdeEur('AUD', precios) : 1
+  // Los precios del servidor (cada 15 min) fijan el cambio a AUD y la conversión de las marcas: con el precio en vivo no cambian cada segundo.
+  const base = v.mercado?.precios ?? null
+  const factor = moneda === 'AUD' ? factorDesdeEur('AUD', base) : 1
 
   const esDirecto = tf === '1m' || tf === '5m'
   const doc = useMercadoDoc<{ EUR?: FilaVela[]; USD?: FilaVela[] }>(esDirecto ? '' : DOC_VELAS[tf]!)
@@ -130,9 +139,10 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
       timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: false },
       crosshair: { mode: CrosshairMode.Normal }, // la cruz marca precio y fecha al tocar
-      handleScale: { pinch: true, mouseWheel: true, axisPressedMouseMove: true }, // pellizcar para hacer zoom
+      handleScale: { pinch: true, mouseWheel: false, axisPressedMouseMove: true }, // pellizcar para hacer zoom
       handleScroll: { pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false }, // arrastrar para moverse por el tiempo
     })
+    registrarPrueba('velas:grafico-creado')
     chart.current = c
     const vs = c.addSeries(CandlestickSeries, {
       upColor: GAIN, downColor: LOSS, borderUpColor: GAIN, borderDownColor: LOSS, wickUpColor: GAIN, wickDownColor: LOSS,
@@ -163,20 +173,38 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
   useEffect(() => { reencuadrar.current = true }, [tf, moneda])
 
   // ── Datos, medias móviles y volumen ──
+  // Si solo cambia la última vela (el directo), se actualiza esa vela con update(); setData() solo con datos nuevos de verdad.
+  const previas = useRef<{ velas: Vela[]; ind: typeof ind } | null>(null)
   useEffect(() => {
     const c = chart.current, vs = velaSerie.current, vol = volSerie.current
     if (!c || !vs || !vol) return
-    if (velas.length > 1) pasoVela.current = Math.max(1, velas[velas.length - 1].time - velas[velas.length - 2].time)
-    vs.setData(velas.map((x) => ({ time: x.time as UTCTimestamp, open: x.open, high: x.high, low: x.low, close: x.close })))
-    vol.setData(velas.map((x) => ({ time: x.time as UTCTimestamp, value: x.volume, color: x.close >= x.open ? 'rgba(46,230,166,0.45)' : 'rgba(255,92,108,0.45)' })))
+    // Tiempos estrictamente crecientes y sin repetidos (lo exige el gráfico); las velas guardadas y las del directo pueden coincidir.
+    const lista = velasCrecientes(velas)
+    const prev = previas.current
+    previas.current = { velas: lista, ind }
+    if (lista.length > 1) pasoVela.current = Math.max(1, lista[lista.length - 1].time - lista[lista.length - 2].time)
+    const velaD = (x: Vela) => ({ time: x.time as UTCTimestamp, open: x.open, high: x.high, low: x.low, close: x.close })
+    const volD = (x: Vela) => ({ time: x.time as UTCTimestamp, value: x.volume, color: x.close >= x.open ? 'rgba(46,230,166,0.45)' : 'rgba(255,92,108,0.45)' })
+    if (prev && prev.ind === ind && soloCambiaLaUltima(prev.velas, lista)) {
+      registrarPrueba('velas:update')
+      for (let i = prev.velas.length - 1; i < lista.length; i++) { vs.update(velaD(lista[i])); vol.update(volD(lista[i])) }
+      for (const [k, n] of [['ma7', 7], ['ma25', 25], ['ma99', 99]] as const) {
+        const ultima = mediaMovil(lista, n).at(-1)
+        if (maSeries.current[k] && ultima) maSeries.current[k].update({ time: ultima.time as UTCTimestamp, value: ultima.value })
+      }
+      return
+    }
+    registrarPrueba('velas:setData')
+    vs.setData(lista.map(velaD))
+    vol.setData(lista.map(volD))
     vol.applyOptions({ visible: ind.volumen })
     for (const [k, n, color] of [['ma7', 7, '#FFD166'], ['ma25', 25, '#C792EA'], ['ma99', 99, '#FFFFFF']] as const) {
       let s = maSeries.current[k]
       if (!ind[k]) { if (s) { c.removeSeries(s); delete maSeries.current[k] } continue }
       s ??= maSeries.current[k] = c.addSeries(LineSeries, { color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })
-      s.setData(mediaMovil(velas, n).map((p) => ({ time: p.time as UTCTimestamp, value: p.value })))
+      s.setData(mediaMovil(lista, n).map((p) => ({ time: p.time as UTCTimestamp, value: p.value })))
     }
-    if (reencuadrar.current && velas.length) {
+    if (reencuadrar.current && lista.length) {
       c.timeScale().fitContent()
       c.timeScale().applyOptions({ rightOffset: 4 })
       reencuadrar.current = false
@@ -184,11 +212,22 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
   }, [velas, ind])
 
   // ── Marcas (C/V/E/S), líneas de trade y niveles horizontales ──
-  const nivel = useMemo(() => (precios && res ? proximoNivel(v.plan, v.operaciones, precios.EUR, precios) : null), [precios, res, v.plan, v.operaciones])
+  const nivel = useMemo(() => (base && res ? proximoNivel(v.plan, v.operaciones, base.EUR, base) : null), [base, res, v.plan, v.operaciones])
+  const nivelPrecio = nivel && base ? nivel.precio * (base[moneda] / base.EUR) : null
+  const mediaPrecio = res && res.btc > 0 ? res.precioMedioReal : null
+  // Marcas y líneas de trade: se calculan con los precios del servidor y solo se redibujan si su contenido cambia (no en cada precio en vivo).
+  const marcado = useMemo(
+    () => construirMarcas({ velas, ops: v.ops, trades: v.trades, moneda, precios: base, verCompras: ind.compras, verTrades: ind.trades }),
+    [velas, v.ops, v.trades, moneda, base, ind.compras, ind.trades],
+  )
+  const marcadoClave = useMemo(() => JSON.stringify(marcado), [marcado])
+  const marcadoRef = useRef(marcado)
+  marcadoRef.current = marcado
   useEffect(() => {
-    const c = chart.current, vs = velaSerie.current
-    if (!c || !vs) return
-    const { marcas, lineas } = construirMarcas({ velas, ops: v.ops, trades: v.trades, moneda, precios, verCompras: ind.compras, verTrades: ind.trades })
+    const c = chart.current
+    if (!c) return
+    registrarPrueba('velas:marcas-redibujadas')
+    const { marcas, lineas } = marcadoRef.current
     marcasActuales.current = marcas
     marcasApi.current?.setMarkers(marcas.map((m) => ({
       time: m.time as UTCTimestamp, text: m.texto, size: 1,
@@ -202,12 +241,17 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
       s.setData([{ time: l.desde.time as UTCTimestamp, value: l.desde.precio }, { time: l.hasta.time as UTCTimestamp, value: l.hasta.precio }])
       return s
     })
+  }, [marcadoClave])
+  // Líneas horizontales: solo si cambian sus valores.
+  useEffect(() => {
+    const vs = velaSerie.current
+    if (!vs) return
+    registrarPrueba('velas:lineas-redibujadas')
     lineasPrecio.current.forEach((l) => vs.removePriceLine(l))
     lineasPrecio.current = []
-    if (ind.media && res && res.btc > 0) lineasPrecio.current.push(vs.createPriceLine({ price: res.precioMedioReal, color: ACCENT, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: 'Tu media' }))
-    if (nivel && precios) lineasPrecio.current.push(vs.createPriceLine({ price: nivel.precio * (precios[moneda] / precios.EUR), color: KEY, lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: true, title: 'Próximo nivel' }))
-  }, [velas, v.ops, v.trades, moneda, precios, ind.compras, ind.trades, ind.media, res, nivel])
-
+    if (ind.media && mediaPrecio != null) lineasPrecio.current.push(vs.createPriceLine({ price: mediaPrecio, color: ACCENT, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: 'Tu media' }))
+    if (nivelPrecio != null) lineasPrecio.current.push(vs.createPriceLine({ price: nivelPrecio, color: KEY, lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: true, title: 'Próximo nivel' }))
+  }, [ind.media, mediaPrecio, nivelPrecio])
 
   const abrirEdicion = edicion
   return (

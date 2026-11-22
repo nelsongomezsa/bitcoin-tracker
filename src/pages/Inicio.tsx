@@ -29,10 +29,13 @@ export default function Inicio() {
   const { res, precio, precios, moneda } = v
   const factor = precios ? precios[moneda] / precios.EUR : 1
 
+  // Sin ninguna compra no hay serie de cartera (sería todo ceros): el minigráfico enseña el precio de BTC.
+  const sinCompras = !v.ops.some((o) => o.tipo === 'compra')
   const spark = useMemo(() => {
     const h = v.historico.slice(-8).map((p) => ({ ...p, precio: p.precio * factor }))
+    if (sinCompras) return h.map((p) => p.precio)
     try { return serieCartera(v.ops, h).map((p) => p.valor) } catch { return [] }
-  }, [v.historico, v.ops, factor])
+  }, [v.historico, v.ops, factor, sinCompras])
 
   if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
   if (v.pro) return <InicioPro />
@@ -76,7 +79,7 @@ export default function Inicio() {
             <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir((res?.valorHoy ?? 0) + extraValor, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
           ))}
         </div>
-        {res && !v.privado && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} /></div>}
+        {res && (sinCompras || !v.privado) && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} etiqueta={sinCompras ? 'Precio de BTC en los últimos 7 días' : undefined} /></div>}
         {res && (
           <div className={`mid ${claseSigno(res.ganancia + extraValor)}`}>
             {flecha(res.ganancia + extraValor)} {v.$s(res.ganancia + extraValor)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.invertido > 0 ? (res.ganancia + extraValor) / res.invertido : res.rentabilidad)})</span>
@@ -101,12 +104,18 @@ export default function Inicio() {
         {ath ? <div className="chip"><span className="k">Del máximo</span><span className="v loss">▼ {porcentaje(1 - precio / ath)}</span></div> : null}
       </div>
 
-      <div className="row">
-        <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Apuntar compra</button>
-        <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Apuntar venta</button>
-      </div>
-
-      {sinOps && <p className="card muted">Todavía no has apuntado ninguna operación. Empieza con «Apuntar compra».</p>}
+      {sinOps ? (
+        <section className="card stack" aria-label="Sin operaciones">
+          <h2>Aún no has apuntado ninguna compra</h2>
+          <p className="muted">Apunta tu primera compra para ver tu precio medio y lo que ganas. Mientras tanto, abajo tienes el precio de BTC.</p>
+          <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Apuntar compra</button>
+        </section>
+      ) : (
+        <div className="row">
+          <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Apuntar compra</button>
+          <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Apuntar venta</button>
+        </div>
+      )}
 
       <Link className="btn" to="/grafico" style={{ alignSelf: 'flex-start' }}>Abrir gráfico pro</Link>
       <PrecioChart historico={v.historico} precioActualEur={v.precios?.EUR} factor={factor} ops={v.ops} precioMedio={res?.precioMedioReal ?? 0} proximoNivel={nivelEnMoneda} />

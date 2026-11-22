@@ -4,13 +4,14 @@ import { dinero, dineroConSigno, OCULTO, porcentajeConSigno, btc as fmtBtc, btcC
 import { normalizar, resumen, type Moneda, type Operacion, type PreciosBtc } from '../lib/calculos'
 import { totalesTrading } from '../lib/trading'
 import { usePreciosVivos } from '../lib/kraken'
+import { interruptorPrueba } from '../lib/pruebas'
 
 /** Vista derivada: todo expresado en la moneda elegida y respetando el modo privado. */
 export function useVista() {
   const d = useDatos()
   const [moneda, setMoneda] = useState<Moneda>(d.perfil.monedaPreferida)
   // Precio en directo (Kraken) mientras la app está abierta; si falla, el del job (mercado/precio, cada 15 min).
-  const vivo = usePreciosVivos(!d.demo)
+  const vivo = usePreciosVivos(!d.demo || interruptorPrueba('demo-directo'))
   const base = d.mercado?.precios ?? null
   const eur = vivo.ticks.EUR?.last, usd = vivo.ticks.USD?.last
   const enDirecto = Boolean(base && vivo.conectado && eur && usd)
