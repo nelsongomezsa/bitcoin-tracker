@@ -85,7 +85,8 @@ export function leerArchivoCon<T>(buf: ArrayBuffer, conv: (filas: unknown[][]) =
   const bytes = new Uint8Array(buf)
   const tipo = detectarTipo(bytes)
   if (!tipo) throw new Error('tipo')
-  const wb = tipo === 'csv' ? XLSX.read(new TextDecoder().decode(bytes), { type: 'string' }) : XLSX.read(bytes, { type: 'array' })
+  // En CSV todo se lee como texto (raw): si no, SheetJS convierte «12/08/2026» en una fecha americana (8 de diciembre).
+  const wb = tipo === 'csv' ? XLSX.read(new TextDecoder().decode(bytes), { type: 'string', raw: true }) : XLSX.read(bytes, { type: 'array' })
   for (const nombre of wb.SheetNames.slice(0, 10)) {
     const filas = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[nombre], { header: 1, raw: true, defval: null })
     try {

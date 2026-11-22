@@ -407,6 +407,9 @@ describe('trading frente a la calculadora de control', () => {
     pp(a.pctMedia, k.pctMedia, `${etiqueta} media por trade`); pp(a.sumaPct, k.sumaPct, `${etiqueta} suma de %`); c += 1; pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
     ok(a.duracionMediaDias, k.duracionMedia, 1e-9, 'duración'); ok(a.racha, k.racha, 0, 'racha')
     if (k.mejor) { pp(a.mejor!.calculo.pct, k.mejor, `${etiqueta} mejor`); pp(a.peor!.calculo.pct, k.peor, `${etiqueta} peor`); c += 2 }
+    const meses = T.resumenPorMes(trades, PR, vista), km = K.porMesCtl(trades, PR)
+    expect(meses.map((m) => m.mes)).toEqual(km.map((m: { mes: string }) => m.mes)); c++
+    meses.forEach((m, i) => { expect(m.n).toBe(km[i].n); ok(m.btc, km[i].btc, BTC, `mes ${m.mes} btc`); pp(m.pctMedia, km[i].pctMedia, `${etiqueta} mes ${m.mes} media`); c++ })
     const filas = T.filasTrades(trades, PR, vista).filter((f) => !f.calculo.abierto)
     expect(filas.length).toBe(k.filas.length)
     filas.forEach((f, i) => {

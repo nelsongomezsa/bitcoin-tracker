@@ -165,3 +165,22 @@ describe('calibración: % y BTC a mano, apalancamiento opcional', () => {
   })
 })
 
+
+import { resumenPorMes } from '../trading'
+describe('resumen por mes de cierre', () => {
+  const m = (id: string, cierre: string, pct: number, btc: number, extra: Partial<Trade> = {}) => t({ id, fechaInicio: '2025-01-01', fechaCierre: cierre, pctManual: pct, btcGanadoManual: btc, ...extra })
+  const lote = [m('1', '2025-02-10', 10, 0.002), m('2', '2025-01-31', -4, -0.001), m('3', '2025-02-01', 30, 0.004), m('4', '2025-03-05', 6, 0.0005), t({ id: '5', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined, pctManual: 99 })]
+  it('agrupa por el mes de cierre, en orden, con nº, BTC y media de %', () => {
+    const r = resumenPorMes(lote, P, 'USD')
+    expect(r.map((x) => x.mes)).toEqual(['2025-01', '2025-02', '2025-03'])
+    expect(r.map((x) => x.n)).toEqual([1, 2, 1])
+    expect(r[1].btc).toBeCloseTo(0.006, 12)
+    expect(r[1].pctMedia).toBeCloseTo(0.2, 12)
+    expect(r[0].pctMedia).toBeCloseTo(-0.04, 12)
+  })
+  it('los abiertos no cuentan y sin trades queda vacío; la suma de los meses = el neto', () => {
+    expect(resumenPorMes([], P, 'USD')).toEqual([])
+    const total = resumenPorMes(lote, P, 'USD').reduce((s, x) => s + x.btc, 0)
+    expect(total).toBeCloseTo(totalesTrading(lote, P, 'USD').neto, 12)
+  })
+})

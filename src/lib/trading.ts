@@ -231,3 +231,18 @@ export function precioEurEnFecha(historico: { t: number; precio: number }[], fec
   for (const p of historico) if (!mejor || Math.abs(p.t - objetivo) < Math.abs(mejor.t - objetivo)) mejor = p
   return mejor && Math.abs(mejor.t - objetivo) <= 2 * MS_DIA ? mejor.precio : null
 }
+
+export interface FilaMes { mes: string; n: number; btc: number; pctMedia: number }
+
+/** Resumen por mes según el mes de cierre (solo trades cerrados): nº de trades, BTC ganados (neto) y media simple de los %. Orden cronológico. */
+export function resumenPorMes(trades: Trade[], precios: PreciosBtc, vista: Moneda): FilaMes[] {
+  const meses = new Map<string, FilaTrade[]>()
+  for (const f of filasTrades(trades, precios, vista)) {
+    if (f.calculo.abierto) continue
+    const mes = (f.trade.fechaCierre ?? f.trade.fechaInicio).slice(0, 7)
+    meses.set(mes, [...(meses.get(mes) ?? []), f])
+  }
+  return [...meses.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([mes, fs]) => ({ mes, n: fs.length, btc: fs.reduce((s, x) => s + x.btc, 0), pctMedia: fs.reduce((s, x) => s + x.calculo.pct, 0) / fs.length }))
+}

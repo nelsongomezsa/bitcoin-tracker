@@ -353,3 +353,18 @@ export function totalesTradingCtl(trades, precios, vista) {
     racha, duracionMedia: n ? D(cerrados.reduce((s, t) => s + dias(t.fechaInicio, cierre(t)), 0)).div(n) : CERO,
   }
 }
+
+/** Resumen por mes de cierre (solo cerrados): nº, BTC netos y media simple de los %. */
+export function porMesCtl(trades, precios) {
+  const t = totalesTradingCtl(trades, precios, 'USD')
+  const cerrados = trades.filter((x) => x.estado === 'cerrado' && x.precioSalida != null)
+  const orden = cerrados.map((x, i) => ({ x, i })).sort((a, b) => ((a.x.fechaCierre ?? a.x.fechaInicio) < (b.x.fechaCierre ?? b.x.fechaInicio) ? -1 : (a.x.fechaCierre ?? a.x.fechaInicio) > (b.x.fechaCierre ?? b.x.fechaInicio) ? 1 : a.x.fechaInicio < b.x.fechaInicio ? -1 : a.x.fechaInicio > b.x.fechaInicio ? 1 : a.i - b.i)).map((o) => o.x)
+  const meses = new Map()
+  orden.forEach((x, i) => {
+    const k = (x.fechaCierre ?? x.fechaInicio).slice(0, 7)
+    const g = meses.get(k) ?? { n: 0, btc: CERO, pct: CERO }
+    g.n++; g.btc = g.btc.plus(t.filas[i].btcN); g.pct = g.pct.plus(t.filas[i].pct)
+    meses.set(k, g)
+  })
+  return [...meses.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([mes, g]) => ({ mes, n: g.n, btc: g.btc, pctMedia: g.pct.div(g.n) }))
+}

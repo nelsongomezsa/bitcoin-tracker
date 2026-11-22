@@ -323,6 +323,16 @@ describe(`auditoría en navegador (${NOMBRE})`, () => {
     const chips = (await page.locator('.chips .chip').allInnerTexts()).join(' | ').replace(/\s+/g, ' ')
     comparar('Trading', '% de ganadores', chips.match(/GANADORES ([\d.,]+ %)/i)![1], k.pctGanadores.mul(100), 0)
     comparar('Trading', 'Duración media (d)', chips.match(/DURACIÓN MEDIA ([\d,]+) d/i)![1], k.duracionMedia, 1)
+    const km = K.porMesCtl(trades, preciosBtc).reverse()
+    const filasMes = await sec('Por mes').locator('tbody tr').all()
+    igual('Trading · Por mes', 'Número de meses', String(filasMes.length), String(km.length))
+    for (let i = 0; i < filasMes.length; i++) {
+      const c = await filasMes[i].locator('td').allInnerTexts()
+      igual('Trading · Por mes', `Mes ${i + 1}`, c[0].trim(), km[i].mes.split('-').reverse().join('/'))
+      igual('Trading · Por mes', `${c[0].trim()}: nº de trades`, c[1].trim(), String(km[i].n))
+      comparar('Trading · Por mes', `${c[0].trim()}: BTC ganados`, c[2], km[i].btc, 8)
+      comparar('Trading · Por mes', `${c[0].trim()}: media por trade %`, c[3], km[i].pctMedia.mul(100), 2)
+    }
     // Detalle de un trade (el primero de la lista es el abierto más reciente; se abre el último cerrado)
     const cerrados = k.filas
     await page.getByRole('button', { name: 'Cerrados' }).click(); await page.waitForTimeout(300)

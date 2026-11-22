@@ -102,3 +102,23 @@ describe('calibración con la hoja real: Total ganado por trade y Total históri
     expect(fr.trades.map((t) => t.pctManual)).toEqual([15.35, -1.5])
   })
 })
+
+import { leerArchivoTrades } from '../importarTrades'
+describe('CSV: las fechas dd/mm/aaaa no se leen como americanas', () => {
+  // Datos inventados.
+  const csv = [
+    'Trade,Fecha inicio,Fecha cierre,Precio entrada (USD),Precio salida (USD),% ganancia,Total ganado (BTC),Total historico',
+    '1,12/08/2024,19/08/2024,50000,51000,7.5,0.00100000,0.00100000',
+    '2,01/02/2024,03/02/2024,52000,53000,-2.25,-0.00050000,0.00050000',
+  ].join('\n')
+  it('12/08/2024 es el 12 de agosto (no el 8 de diciembre), y los decimales con punto valen', () => {
+    const buf = new TextEncoder().encode(csv)
+    const r = leerArchivoTrades(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, 'USD')
+    expect(r.errores).toEqual([])
+    expect(r.trades.map((t) => [t.fechaInicio, t.fechaCierre])).toEqual([['2024-08-12', '2024-08-19'], ['2024-02-01', '2024-02-03']])
+    expect(r.trades.map((t) => t.pctManual)).toEqual([7.5, -2.25])
+    expect(r.trades.map((t) => t.btcGanadoManual)).toEqual([0.001, -0.0005])
+    expect(r.hayHistorico).toBe(true)
+    expect(r.desajustes).toEqual([])
+  })
+})

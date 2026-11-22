@@ -8,7 +8,7 @@ import Sparkline from '../components/Sparkline'
 import TradeSheet from '../components/TradeSheet'
 import TradeFicha from '../components/TradeFicha'
 import TradingGraficas from '../components/TradingGraficas'
-import { etiquetaTrade, filasTrades, type FilaTrade, type Trade } from '../lib/trading'
+import { etiquetaTrade, filasTrades, resumenPorMes, type FilaTrade, type Trade } from '../lib/trading'
 import { claseSigno, fechaConHora, fechaCorta, flecha, hoyISO, dinero, OCULTO } from '../lib/format'
 import { mensajeError } from '../lib/errores'
 import { MONEDAS } from '../lib/schemas'
@@ -29,6 +29,7 @@ export default function Trading() {
 
   const filas = useMemo(() => (v.precios ? filasTrades(v.trades, v.precios, v.moneda) : []), [v.trades, v.precios, v.moneda])
   const tot = v.trading
+  const meses = useMemo(() => (v.precios ? resumenPorMes(v.trades, v.precios, v.moneda).reverse() : []), [v.trades, v.precios, v.moneda])
   const lista = useMemo(
     () => filas.filter((f) => (filtro === 'todos' ? true : filtro === 'abiertos' ? f.calculo.abierto : !f.calculo.abierto)).reverse(),
     [filas, filtro],
@@ -108,6 +109,26 @@ export default function Trading() {
             </div>
             {tot.nAbiertos > 0 && <p className="notice">Aparte, sin cerrar ({tot.nAbiertos}): {v.btcS(tot.abiertos)} · {v.$s(tot.abiertosValor)}. No suma a los totales hasta que cierres el trade.</p>}
           </section>
+
+          {meses.length > 0 && (
+            <section className="card stack" aria-label="Por mes">
+              <h2>Por mes</h2>
+              <p className="notice">Según el mes de cierre. Solo trades cerrados.</p>
+              <table className="pro-historial">
+                <thead><tr><th scope="col">Mes</th><th scope="col" className="r">Trades</th><th scope="col" className="r">BTC ganados</th><th scope="col" className="r">Media por trade</th></tr></thead>
+                <tbody>
+                  {meses.map((m) => (
+                    <tr key={m.mes} style={{ cursor: 'default' }}>
+                      <td className="num">{m.mes.split('-').reverse().join('/')}</td>
+                      <td className="r num">{m.n}</td>
+                      <td className={`r num ${claseSigno(m.btc)}`}>{v.btcS(m.btc)}</td>
+                      <td className={`r num ${claseSigno(m.pctMedia)}`}>{flecha(m.pctMedia)} {v.pct(m.pctMedia)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
           <TradingGraficas filas={filas} />
 

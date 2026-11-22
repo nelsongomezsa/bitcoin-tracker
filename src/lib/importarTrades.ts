@@ -52,7 +52,9 @@ export function filasATrades(filas: unknown[][], moneda: Moneda): ResultadoTrade
     cuerpo.push({ n: i + 1, f })
   }
   // El % puede venir como 15,35 (puntos porcentuales), como 0,1535 (celda con formato %) o como «15,35%».
-  const numPct = cuerpo.map(({ f }) => (iPct >= 0 && typeof f[iPct] === 'number' ? Math.abs(f[iPct] as number) : null)).filter((x): x is number => x != null)
+  const numPct = cuerpo
+    .map(({ f }) => (iPct < 0 || f[iPct] == null || (typeof f[iPct] === 'string' && (f[iPct] as string).includes('%')) ? NaN : Math.abs(aNumero(f[iPct]))))
+    .filter((x) => Number.isFinite(x))
   const comoFraccion = numPct.length > 0 && Math.max(...numPct) <= 2
   const leerPct = (v: unknown): number | null => {
     if (v == null || v === '') return null
