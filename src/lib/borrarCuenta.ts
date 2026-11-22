@@ -16,8 +16,17 @@ export async function borrarCuenta(password: string): Promise<void> {
     ops.docs.slice(i, i + 400).forEach((d) => lote.delete(d.ref))
     await lote.commit()
   }
+  // Subcolecciones nuevas: historial y dispositivos (las reglas dejan al dueño borrarlos).
+  for (const sub of ['historial', 'dispositivos']) {
+    const docs = await getDocs(collection(db, `${base}/${sub}`))
+    for (let i = 0; i < docs.docs.length; i += 400) {
+      const lote = writeBatch(db)
+      docs.docs.slice(i, i + 400).forEach((d) => lote.delete(d.ref))
+      await lote.commit()
+    }
+  }
   await deleteDoc(doc(db, `${base}/plan/config`))
-  await deleteDoc(doc(db, `${base}/avisos/config`))
+  for (const id of ['config', 'estado', 'prueba']) await deleteDoc(doc(db, `${base}/avisos/${id}`))
   await deleteDoc(doc(db, base))
   await deleteUser(user)
 }

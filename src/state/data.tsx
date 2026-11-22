@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from './auth'
@@ -8,7 +8,8 @@ import type { Operacion, Plan, PuntoPrecio } from '../lib/calculos'
 import {
   AVISOS_INICIALES, PERFIL_INICIAL, PLAN_VACIO, type AvisosDoc, type Datos, type Mercado, type Objetivos, type OperacionGuardable, type Perfil,
 } from '../lib/tipos'
-import { operacionSchema, perfilSchema, planSchema } from '../lib/schemas'
+import { avisosSchema, operacionSchema, perfilSchema, planSchema } from '../lib/schemas'
+import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
   AVISOS_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, historicoDemo, mercadoDemo, operacionesDemo, planDemo,
 } from './demoData'
@@ -39,7 +40,7 @@ function DemoProvider({ children }: { children: ReactNode }) {
   const historico = useMemo(() => historicoDemo(), [])
 
   const value: Datos = {
-    demo: true, cargando: false, perfil, operaciones, plan, objetivos, avisos, mercado, historico,
+    demo: true, cargando: false, perfil, operaciones, plan, objetivos, avisos, mercado, historico, telegramVinculado: false,
     guardarOperacion: async (o, id) => {
       const v = operacionSchema.parse(o)
       setOperaciones((prev) => (id ? prev.map((x) => (x.id === id ? { ...v, id } : x)) : [...prev, { ...v, id: `demo-${crypto.randomUUID()}` }]))
@@ -51,6 +52,12 @@ function DemoProvider({ children }: { children: ReactNode }) {
     },
     guardarAvisos: async (a) => setAvisos(a),
     guardarPerfil: async (p) => setPerfil(p),
+    pedirPrueba: async () => undefined,
+    crearVinculo: async () => undefined,
+    suscribirHistorial: (cb) => {
+      cb([{ id: 'd1', t: new Date(Date.now() - 3600e3), tipo: 'mov24h', titulo: 'Movimiento de precio', texto: 'BTC sube un 5,2 % en 24 horas (ejemplo del modo demo).' }])
+      return () => undefined
+    },
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -68,6 +75,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
   const [mercado, setMercado] = useState<Mercado | null>(null)
   const [historico, setHistorico] = useState<PuntoPrecio[]>([])
   const [listos, setListos] = useState({ perfil: false, ops: false })
+  const [telegramVinculado, setTelegramVinculado] = useState(false)
 
   useEffect(() => {
     if (!db) return
@@ -102,8 +110,14 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
         setObjetivos((d.objetivos as Objetivos) ?? {})
       }),
       onSnapshot(doc(db, `${base}/avisos/config`), (s) => {
-        if (s.exists()) setAvisos({ ajustes: s.data().ajustes ?? {}, tokens: s.data().tokens ?? [], resumen: s.data().resumen })
+        if (!s.exists()) return
+        const d = s.data()
+        setAvisos({
+          ajustes: d.ajustes ?? {}, tokens: d.tokens ?? [], resumen: d.resumen, general: d.general, alertas: d.alertas ?? [],
+          seguidas: d.seguidas ?? [], telegram: d.telegram, historialLeidoHasta: d.historialLeidoHasta instanceof Timestamp ? d.historialLeidoHasta.toDate() : null,
+        })
       }),
+      onSnapshot(doc(db, `${base}/avisos/estado`), (s) => setTelegramVinculado(Boolean(s.exists() && s.data().telegramChatId))),
       onSnapshot(doc(db, 'mercado/precio'), (s) => {
         if (!s.exists()) return
         const d = s.data()
@@ -120,11 +134,12 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
         setHistorico(puntos.map(([t, precio]) => ({ t, precio })))
       }),
     ]
+    void registrarDispositivo(uid)
     return () => unsubs.forEach((u) => u())
   }, [uid, nombre])
 
   const value: Datos = {
-    demo: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, plan, objetivos, avisos, mercado, historico,
+    demo: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, plan, objetivos, avisos, mercado, historico, telegramVinculado,
     guardarOperacion: async (o: OperacionGuardable, id) => {
       if (!db) return
       const v = limpiar(operacionSchema.parse(o))
@@ -140,13 +155,44 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
       await setDoc(doc(db, `users/${uid}/plan/config`), v)
     },
     guardarAvisos: async (a) => {
-      if (db) await setDoc(doc(db, `users/${uid}/avisos/config`), limpiar({ ajustes: a.ajustes, tokens: a.tokens, resumen: a.resumen }), { merge: true })
+      if (!db) return
+      const v = avisosSchema.parse(a)
+      await setDoc(doc(db, `users/${uid}/avisos/config`), limpiar({
+        ajustes: v.ajustes, tokens: v.tokens, resumen: v.resumen, general: v.general, alertas: v.alertas, seguidas: v.seguidas,
+        telegram: v.telegram, historialLeidoHasta: v.historialLeidoHasta ?? undefined,
+      }))
     },
     guardarPerfil: async (p) => {
       if (!db) return
       const v = perfilSchema.parse(p)
       await setDoc(doc(db, `users/${uid}`), v, { merge: true })
     },
+    pedirPrueba: async () => {
+      if (db) await setDoc(doc(db, `users/${uid}/avisos/prueba`), { ts: serverTimestamp() })
+    },
+    crearVinculo: async (codigo) => {
+      if (db) await setDoc(doc(db, `vinculos/${codigo}`), { uid, expira: Timestamp.fromMillis(Date.now() + 14 * 60 * 1000) })
+    },
+    suscribirHistorial: (cb) => {
+      if (!db) return () => undefined
+      const q = query(collection(db, `users/${uid}/historial`), orderBy('t', 'desc'), limit(40))
+      return onSnapshot(q, (s) =>
+        cb(s.docs.map((x) => ({ id: x.id, t: x.data().t instanceof Timestamp ? x.data().t.toDate() : new Date(), tipo: String(x.data().tipo ?? ''), titulo: String(x.data().titulo ?? ''), texto: String(x.data().texto ?? '') }))),
+      )
+    },
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+}
+
+/** Registra este dispositivo la primera vez. Si es el primero de la cuenta no avisa; si no, el job avisa al resto. */
+async function registrarDispositivo(uid: string) {
+  try {
+    if (!db || (await yaRegistrado(uid))) return
+    const id = await idDispositivo()
+    const otros = await getDocs(query(collection(db, `users/${uid}/dispositivos`), limit(1)))
+    await setDoc(doc(db, `users/${uid}/dispositivos/${id}`), { creado: serverTimestamp(), navegador: navegadorGenerico(), procesado: otros.empty })
+    await marcarRegistrado(uid)
+  } catch {
+    /* sin conexión o sin permiso: se reintenta en la próxima sesión */
+  }
 }

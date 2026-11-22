@@ -47,7 +47,6 @@ export async function procesarUsuarios({ db, ctx, modo, enviarPush, enviarTelegr
     const est = fusionar(estadoInicial(), guardado)
     const antes = JSON.stringify(est)
     const tokens = Array.isArray(config.tokens) ? config.tokens : []
-    const chatId = est.telegramChatId
     const gen = general(config.general)
     const u = { config, uid }
 

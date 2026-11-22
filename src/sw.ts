@@ -14,22 +14,25 @@ self.addEventListener('message', (e) => {
 self.addEventListener('push', (event) => {
   let title = 'Bitcoin Tracker'
   let body: string
+  let url = '/avisos'
   try {
     const payload = event.data?.json() ?? {}
     title = payload.notification?.title ?? payload.data?.title ?? title
     body = payload.notification?.body ?? payload.data?.body ?? ''
+    if (typeof payload.data?.url === 'string' && payload.data.url.startsWith('/')) url = payload.data.url
   } catch {
     body = event.data?.text() ?? ''
   }
-  event.waitUntil(self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png' }))
+  event.waitUntil(self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png', data: { url } }))
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  const url: string = event.notification.data?.url ?? '/avisos'
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((list) => {
-      const c = list[0]
-      return c ? c.focus() : self.clients.openWindow('/')
+      const c = list[0] as WindowClient | undefined
+      return c ? c.navigate(url).then((w) => (w ?? c).focus()).catch(() => c.focus()) : self.clients.openWindow(url)
     }),
   )
 })

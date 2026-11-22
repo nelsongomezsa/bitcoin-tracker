@@ -35,6 +35,8 @@ export const planSchema = z.object({
   nivelesClave: z.array(z.object({ precio: z.number().gt(0), porcentajeCapital: z.number().min(0).max(100) })).max(20),
   dca: z.object({
     inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    precioInicio: z.number().gt(0).optional(),
+    monedaInicio: monedaSchema.optional(),
     porcentajeSemanal: z.number().min(0).max(100),
     semanas: z.number().int().min(0).max(520),
   }),
@@ -43,3 +45,34 @@ export const planSchema = z.object({
 
 export const emailSchema = z.string().trim().email('Correo no válido').max(254)
 export const passwordSchema = z.string().min(10, 'La contraseña debe tener al menos 10 caracteres').max(128)
+
+const horaSchema = z.number().int().min(0).max(23)
+export const generalAvisosSchema = z.object({
+  zona: z.string().max(64),
+  silencioActivo: z.boolean(),
+  silencioDesde: horaSchema,
+  silencioHasta: horaSchema,
+  limiteDiario: z.number().int().min(1).max(100),
+  pausadoHasta: z.number().min(0),
+  moneda: monedaSchema,
+  horaResumen: horaSchema,
+}).partial()
+
+export const alertaSchema = z.object({
+  id: z.string().min(4).max(24),
+  dir: z.enum(['abajo', 'arriba']),
+  precio: z.number().gt(0).lt(100_000_000),
+  moneda: monedaSchema,
+  repetir: z.boolean(),
+})
+
+export const avisosSchema = z.object({
+  ajustes: z.record(z.string().max(40), z.object({ activo: z.boolean() }).passthrough()),
+  tokens: z.array(z.string().max(4096)).max(10),
+  resumen: z.record(z.string(), z.unknown()).optional(),
+  general: generalAvisosSchema.optional(),
+  alertas: z.array(alertaSchema).max(20).optional(),
+  seguidas: z.array(z.string().max(60)).max(30).optional(),
+  telegram: z.object({ desconectar: z.boolean().optional() }).optional(),
+  historialLeidoHasta: z.date().nullable().optional(),
+}).passthrough()

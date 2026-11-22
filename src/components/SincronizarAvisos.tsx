@@ -1,32 +1,47 @@
 import { useEffect, useRef } from 'react'
 import { useDatos } from '../state/data'
-import { estadoNiveles, normalizar, precioObjetivoPorGanancia, resumen, resumenMensual } from '../lib/calculos'
+import { convertir, estadoNiveles, informeFifoAnual, normalizar, ordenarPorFecha, precioObjetivoPorGanancia, resumen, resumenMensual } from '../lib/calculos'
 import type { ResumenAvisos } from '../lib/tipos'
 
 /**
  * Deja en avisos/config un resumen mínimo (en EUR) para que el job evalúe los avisos
  * sin leer todas las operaciones de cada usuario (ahorra lecturas del plan gratuito).
- * Solo escribe cuando el usuario tiene notificaciones activadas y el resumen ha cambiado.
+ * Solo escribe cuando hay algún canal de avisos activo y el resumen ha cambiado.
  */
 export default function SincronizarAvisos() {
   const d = useDatos()
   const ultimo = useRef('')
 
   useEffect(() => {
-    if (d.demo || d.cargando || !d.mercado || d.avisos.tokens.length === 0) return
+    const hayCanal = d.avisos.tokens.length > 0 || d.telegramVinculado
+    if (d.demo || d.cargando || !d.mercado || !hayCanal) return
     const t = setTimeout(() => {
       try {
-        const ops = normalizar(d.operaciones, 'EUR', d.mercado!.precios)
-        const precio = d.mercado!.precios.EUR
+        const precios = d.mercado!.precios
+        const ops = normalizar(d.operaciones, 'EUR', precios)
+        const precio = precios.EUR
         const r = resumen(ops, precio)
         const hoy = new Date()
         const ant = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - 1, 1)).toISOString().slice(0, 7)
         const pv = d.objetivos.precioVenta
+        const dca = d.plan.dca
+        const compras = ordenarPorFecha(ops.filter((o) => o.tipo === 'compra'))
+        let anioAnterior: ResumenAvisos['anioAnterior'] = null
+        try {
+          const inf = informeFifoAnual(ops, hoy.getUTCFullYear() - 1)
+          anioAnterior = { anio: hoy.getUTCFullYear() - 1, ganancia: Math.round(inf.gananciaTotal * 100) / 100, ventas: inf.ventas.length }
+        } catch { /* operaciones incoherentes */ }
         const res: ResumenAvisos = {
           precioMedio: Math.round(r.precioMedioReal),
           btc: Number(r.btc.toFixed(8)),
+          invertido: Math.round(r.invertido * 100) / 100,
           nivelesPendientes: estadoNiveles(d.plan, ops).filter((n) => n.estado === 'Pendiente').map((n) => n.precio),
           precioObjetivo: pv ? Math.round(pv.modo === 'precio' ? pv.valor : precioObjetivoPorGanancia(r.precioMedioReal, pv.valor)) : null,
+          precioInicio: dca.precioInicio ? Math.round(convertir(dca.precioInicio, dca.monedaInicio ?? 'EUR', 'EUR', precios)) : null,
+          btcMeta: d.objetivos.btcMeta ?? null,
+          dineroMeta: d.objetivos.dineroMeta ?? null,
+          ultimaCompra: compras.at(-1)?.fecha ?? null,
+          anioAnterior,
           mesAnterior: ops.some((o) => o.fecha.slice(0, 7) <= ant) ? (({ metido, medioAntes, medioDespues, rentabilidad }) => ({ mes: ant, metido, medioAntes, medioDespues, rentabilidad }))(resumenMensual(ops, ant, precio)) : null,
         }
         const clave = JSON.stringify(res)

@@ -241,6 +241,9 @@ export interface ConfigDca {
   inicio?: string
   porcentajeSemanal: number
   semanas: number
+  /** Precio de arranque del DCA (opcional): un aviso salta cuando BTC lo toca. */
+  precioInicio?: number
+  monedaInicio?: Moneda
 }
 export interface Plan {
   capital: number

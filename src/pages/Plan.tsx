@@ -24,7 +24,7 @@ export default function Plan() {
   const [msg, setMsg] = useState('')
   const [capital, setCapital] = useState(String(v.plan.capital))
   const [niveles, setNiveles] = useState(v.plan.nivelesClave.map((n) => ({ precio: String(n.precio), pct: String(n.porcentajeCapital) })))
-  const [dca, setDca] = useState({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
+  const [dca, setDca] = useState({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas), arranque: v.plan.dca.precioInicio ? String(v.plan.dca.precioInicio) : '', monedaArranque: (v.plan.dca.monedaInicio ?? 'EUR') as string })
   const [obj, setObj] = useState({
     btcMeta: v.objetivos.btcMeta != null ? String(v.objetivos.btcMeta) : '',
     dineroMeta: v.objetivos.dineroMeta != null ? String(v.objetivos.dineroMeta) : '',
@@ -43,7 +43,7 @@ export default function Plan() {
   function abrirEdicion() {
     setCapital(String(v.plan.capital))
     setNiveles(v.plan.nivelesClave.map((n) => ({ precio: String(n.precio), pct: String(n.porcentajeCapital) })))
-    setDca({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
+    setDca({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas), arranque: v.plan.dca.precioInicio ? String(v.plan.dca.precioInicio) : '', monedaArranque: v.plan.dca.monedaInicio ?? 'EUR' })
     setObj({
       btcMeta: v.objetivos.btcMeta != null ? String(v.objetivos.btcMeta) : '',
       dineroMeta: v.objetivos.dineroMeta != null ? String(v.objetivos.dineroMeta) : '',
@@ -59,7 +59,12 @@ export default function Plan() {
     const nuevo: PlanT = {
       capital: aNum(capital),
       nivelesClave: niveles.map((n) => ({ precio: aNum(n.precio), porcentajeCapital: aNum(n.pct) })),
-      dca: { ...(dca.inicio ? { inicio: dca.inicio } : {}), porcentajeSemanal: aNum(dca.pct), semanas: Math.trunc(aNum(dca.semanas)) },
+      dca: {
+        ...(dca.inicio ? { inicio: dca.inicio } : {}),
+        porcentajeSemanal: aNum(dca.pct),
+        semanas: Math.trunc(aNum(dca.semanas)),
+        ...(optNum(dca.arranque) ? { precioInicio: optNum(dca.arranque), monedaInicio: dca.monedaArranque as 'EUR' | 'USD' | 'AUD' } : {}),
+      },
     }
     const objetivos: Objetivos = {
       btcMeta: optNum(obj.btcMeta), dineroMeta: optNum(obj.dineroMeta),
@@ -98,6 +103,10 @@ export default function Plan() {
             <label>Inicio (opcional)<input type="date" value={dca.inicio} onChange={(e) => setDca({ ...dca, inicio: e.target.value })} /></label>
             <label>% semanal<input inputMode="decimal" value={dca.pct} onChange={(e) => setDca({ ...dca, pct: e.target.value })} /></label>
             <label>Semanas<input inputMode="numeric" value={dca.semanas} onChange={(e) => setDca({ ...dca, semanas: e.target.value })} /></label>
+            <label>Precio de arranque (opcional)<input inputMode="decimal" value={dca.arranque} onChange={(e) => setDca({ ...dca, arranque: e.target.value })} /></label>
+            <label>Moneda del arranque
+              <select value={dca.monedaArranque} onChange={(e) => setDca({ ...dca, monedaArranque: e.target.value })}><option>EUR</option><option>USD</option><option>AUD</option></select>
+            </label>
           </div>
         </section>
         <section className="card stack">

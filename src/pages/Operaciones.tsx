@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useVista } from '../state/vista'
 import OperacionSheet from '../components/OperacionSheet'
 import Sheet from '../components/Sheet'
@@ -14,12 +15,22 @@ export default function Operaciones() {
   const [hoja, setHoja] = useState<null | { tipo: 'compra' | 'venta'; op?: Operacion; plantilla?: boolean }>(null)
   const [borrar, setBorrar] = useState<Operacion | null>(null)
   const [error, setError] = useState('')
+  const [params, setParams] = useSearchParams()
 
   const ventas = useMemo(() => {
     try { return new Map(calcularFifo(v.ops).ventas.map((x) => [x.id, x])) } catch { return new Map() }
   }, [v.ops])
   const lista = ordenarPorFecha(v.ops).filter((o) => filtro === 'todas' || o.tipo === filtro).reverse()
   const original = (id: string) => v.operaciones.find((o) => o.id === id)
+
+  // Los avisos de DCA abren la app en «Duplicar última compra».
+  useEffect(() => {
+    if (params.get('duplicar') !== '1' || v.cargando) return
+    const ultima = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).at(-1)
+    setParams({}, { replace: true })
+    if (ultima) duplicar(ultima)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, v.cargando])
 
   function duplicar(o: Operacion) {
     const m = o.moneda

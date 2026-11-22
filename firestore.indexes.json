@@ -1,1 +1,22 @@
-{"indexes":[],"fieldOverrides":[]}
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "dispositivos",
+      "fieldPath": "procesado",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "collectionGroup": "historial",
+      "fieldPath": "t",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
+}
