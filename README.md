@@ -29,7 +29,7 @@ Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.
 ### 22 de noviembre de 2026
 - **Ballenas, empresas y gobiernos con BTC** y carteras públicas que se pueden seguir, en la pestaña Mercado.
 - **Estadísticas ampliadas** de la cartera, de las compras y del mercado.
-- **Avisos push** (y Telegram opcional): unos 35 avisos con horas de silencio, límite diario y prioridad.
+- **Avisos push** (y Telegram opcional): 36 avisos con horas de silencio, límite diario y prioridad.
 - **Aviso de actualización:** cuando hay una versión nueva de la app, aparece «Hay una versión nueva · Actualizar».
 - **Rediseño** de toda la app y formulario con plataforma y comisión en € o en %.
 - Primera versión: compras y ventas, FIFO, plan, calculadoras, importar y exportar, modo demo y seguridad.
@@ -64,7 +64,7 @@ Escritorio: [Inicio](docs/capturas/inicio-escritorio.png) · [Mercado](docs/capt
 - Gráfica del precio (lightweight-charts) con una marca por compra o venta, línea de precio medio y próximo nivel clave.
 - Estadísticas, plan con niveles clave y progreso de compra periódica (DCA) semanal, objetivos con precio de venta.
 - Calculadoras: bajar mi precio medio, «¿y si BTC llega a X?» y «si vendo hoy» (con una estimación orientativa del impuesto del ahorro en España).
-- **Avisos**: unos 35 en 7 grupos (movimientos de precio, máximos y mínimos, números redondos, vuelta a beneficios, hitos de ganancia, niveles clave, recordatorios de DCA, zonas de miedo y codicia, halving, resúmenes, ballenas, inicio de sesión en un dispositivo nuevo…), alertas de precio a medida, prioridad y canal por aviso, horas de silencio, límite diario, pausa, historial y envío por push o Telegram.
+- **Avisos**: 36 en 7 grupos (movimientos de precio, máximos y mínimos, números redondos, vuelta a beneficios, hitos de ganancia, niveles clave, recordatorios de DCA, zonas de miedo y codicia, halving, resúmenes, ballenas, inicio de sesión en un dispositivo nuevo…), alertas de precio a medida, prioridad y canal por aviso, horas de silencio, límite diario, pausa, historial y envío por push o Telegram.
 - **Pestaña Mercado**: empresas y gobiernos con BTC, movimientos de ballenas (≥ 500 BTC) y carteras públicas que puedes seguir. Estadísticas: velas, indicador de miedo y codicia, dominancia, ciclo del halving, comisiones de la red, caída desde máximos, mapa de precios de compra, calendario de DCA y comisiones por plataforma.
 - **Trading** (se puede apagar en Ajustes → Apariencia): registro de entradas y salidas largas y cortas (el apalancamiento es opcional y por trade). El % y los BTC ganados de cada trade se escriben a mano y mandan sobre cualquier cálculo; el cálculo automático (movimiento × apalancamiento − comisiones, y margen × %) solo se ofrece como sugerencia en el formulario. Totales de ganado, perdido y neto (× precio actual), acumulado trade a trade, «Media por trade» (media simple de los %), racha, duración media, gráficas, importar/exportar Excel o CSV, informe fiscal anual y avisos de trades abiertos. La app **solo registra**: no opera ni se conecta a ningún exchange.
 - **Gráfico pro** (estilo exchange, con el diseño de la app): velas de 1m a 1S con volumen, medias móviles, marcas de tus compras, ventas y trades, precio medio y próximo nivel, rendimiento por periodos y tu posición. El precio y las velas de 1m y 5m se actualizan en directo mientras la app está abierta.

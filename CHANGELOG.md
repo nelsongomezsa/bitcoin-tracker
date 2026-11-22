@@ -78,7 +78,7 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 - Todo se descarga en el servidor y se comparte entre usuarios, sin gastar cuota de cada cuenta.
 
 ### Avisos
-- Unos 35 avisos en grupos: precio, mi cartera, mi plan, trading, mercado, ballenas y carteras, resúmenes, cuenta y seguridad.
+- 36 avisos en grupos: precio, mi cartera, mi plan, trading, mercado, ballenas y carteras, resúmenes, cuenta y seguridad.
 - **Avisos push** en el móvil y el ordenador y, opcionalmente, por Telegram.
 - Alertas de precio a medida, prioridad y canal por aviso, horas de silencio, límite diario, pausa e historial de los últimos 30 días.
 - Aviso al iniciar sesión desde un dispositivo nuevo.
