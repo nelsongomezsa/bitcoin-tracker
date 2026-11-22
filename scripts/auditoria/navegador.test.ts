@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { chromium, type Browser, type Page } from 'playwright-core'
 import Decimal from 'decimal.js'
 import * as K from './control.mjs'
-import { historicoDemo, mercadoDemo, operacionesDemo, planDemo } from '../../src/state/demoData'
+import { historicoDemo, mercadoDemo, operacionesDemo, planDemo, tradesDemo } from '../../src/state/demoData'
 
 const URL_BASE = process.env.AUDIT_URL ?? 'http://localhost:4173'
 const NOMBRE = process.env.AUDIT_NAME ?? 'local'
@@ -72,7 +72,15 @@ function chromiumPath(): string {
 
 const captura = (n: string) => page.screenshot({ path: join(SALIDA, `${NOMBRE}-${n}.png`), fullPage: true })
 const sec = (etiqueta: string) => page.locator(`section[aria-label="${etiqueta}"]`)
-const irA = async (href: string) => { await page.evaluate((h) => document.querySelector<HTMLAnchorElement>(`a[href="${h}"]`)!.click(), href); await page.waitForTimeout(900) }
+// Si el enlace no está en la pantalla actual (p. ej. Estadísticas ahora cuelga de Inicio), navega por el historial.
+const irA = async (href: string) => {
+  await page.evaluate((h) => {
+    const a = document.querySelector<HTMLAnchorElement>(`a[href="${h}"]`)
+    if (a) a.click()
+    else { history.pushState({}, '', h); dispatchEvent(new PopStateEvent('popstate')) }
+  }, href)
+  await page.waitForTimeout(900)
+}
 
 beforeAll(async () => {
   browser = await chromium.launch({ executablePath: chromiumPath() })
@@ -295,5 +303,37 @@ describe(`auditoría en navegador (${NOMBRE})`, () => {
       await leerVenta(`Vender ${btc} BTC`, btc)
     }
     await captura('calculadoras')
+  })
+
+  it('Trading: totales, ganado, perdido, neto y detalle de cada trade', async () => {
+    await irA('/trading')
+    await page.waitForSelector('section[aria-label="Ganado, perdido y neto"]')
+    const trades = tradesDemo().map((t) => ({ ...t, moneda: t.moneda as Mon }))
+    const k = K.totalesTradingCtl(trades, preciosBtc, 'EUR')
+    const caja = sec('Ganado, perdido y neto')
+    const v = (await caja.locator('.stat .num').allInnerTexts()).map((x) => x.replace(/\s+/g, ' '))
+    comparar('Trading', 'Ganado (BTC)', v[0], k.ganado, 8)
+    comparar('Trading', 'Perdido (BTC, se muestra con signo menos)', v[1], k.perdido.neg(), 8)
+    comparar('Trading', 'Neto = ganado − perdido (BTC)', v[2], k.neto, 8)
+    comparar('Trading', 'Neto × precio actual (€)', v[3], k.netoValor, 2)
+    const res = (await sec('Resumen de trading').innerText()).replace(/\s+/g, ' ')
+    comparar('Trading', '% total', res.match(/([▲▼■] [−+-]?[\d.,]+ %)/)![1], k.pctTotal.mul(100), 2)
+    const chips = (await page.locator('.chips .chip').allInnerTexts()).join(' | ').replace(/\s+/g, ' ')
+    comparar('Trading', '% de ganadores', chips.match(/GANADORES ([\d.,]+ %)/i)![1], k.pctGanadores.mul(100), 0)
+    comparar('Trading', 'Ganancia media %', chips.match(/GANANCIA MEDIA ([−+-]?[\d.,]+ %)/i)![1], k.gananciaMedia.mul(100), 2)
+    comparar('Trading', 'Duración media (d)', chips.match(/DURACIÓN MEDIA ([\d,]+) d/i)![1], k.duracionMedia, 1)
+    // Detalle de un trade (el primero de la lista es el abierto más reciente; se abre el último cerrado)
+    const cerrados = k.filas
+    await page.getByRole('button', { name: 'Cerrados' }).click(); await page.waitForTimeout(300)
+    await page.locator('.trade-fila').first().click(); await page.waitForTimeout(600)
+    const ficha = (await page.locator('[role="dialog"]').innerText()).replace(/\s+/g, ' ')
+    const ult = cerrados[cerrados.length - 1]
+    comparar('Trading · ficha del último cerrado', '% del trade', ficha.match(/([▲▼■] [−+-]?[\d.,]+ %)/)![1], ult.pct.mul(100), 2)
+    comparar('Trading · ficha del último cerrado', 'Ganado (BTC)', ficha.match(/(?:Ganado|Perdido) ([−+-]?[\d,]+) BTC/)![1], ult.btcN, 8)
+    comparar('Trading · ficha del último cerrado', 'Total tras este trade (BTC)', ficha.match(/Total tras este trade ([−+-]?[\d,]+) BTC/)![1], ult.acumulado, 8)
+    comparar('Trading · ficha del último cerrado', 'Vale hoy (€)', ficha.match(/Vale hoy ([−+-]?[\d.,]+) €/)![1], ult.valeHoy, 2)
+    comparar('Trading · ficha del último cerrado', 'Valía al cerrar (€)', ficha.match(/Valía al cerrar ([−+-]?[\d.,]+) €/)![1], ult.valia, 2)
+    await page.keyboard.press('Escape')
+    await captura('trading')
   })
 })
