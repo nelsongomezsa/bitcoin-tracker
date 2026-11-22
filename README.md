@@ -11,9 +11,11 @@ An installable web app (PWA) to manually track bitcoin purchases and sales: aver
 
 ## Screenshots (demo mode, fictitious data)
 
-| Home | Purchases table | Statistics | Calculators | Alerts |
+| Home | Statistics | Market | Whales | Add purchase |
 |---|---|---|---|---|
-| ![Home](docs/capturas/inicio.png) | ![Purchases](docs/capturas/compras.png) | ![Statistics](docs/capturas/estadisticas.png) | ![Calculators](docs/capturas/calculadoras.png) | ![Alerts](docs/capturas/avisos.png) |
+| ![Home](docs/capturas/inicio-movil.png) | ![Statistics](docs/capturas/estadisticas-movil.png) | ![Market](docs/capturas/mercado-movil.png) | ![Whales](docs/capturas/ballenas-movil.png) | ![Add purchase](docs/capturas/anadir-movil.png) |
+
+Desktop: [Home](docs/capturas/inicio-escritorio.png) · [Market](docs/capturas/mercado-escritorio.png) · [Statistics](docs/capturas/estadisticas-escritorio.png) · [Settings](docs/capturas/ajustes-escritorio.png)
 
 ## Features
 
@@ -26,6 +28,8 @@ An installable web app (PWA) to manually track bitcoin purchases and sales: aver
 - Calculators: lower my average, "what if BTC reaches X", "if I sell today" (with an indicative Spanish savings-tax estimate).
 - Push alerts (key level, back in profit, 24 h / 7 d moves, extreme fear, DCA reminder, monthly summary, backup reminder, sell target).
 - Excel/CSV import with preview (client side, 2 MB max, real file-type check), CSV/XLSX export.
+- **Alert settings**: ~35 alerts in 7 groups (price moves, new highs/lows, round numbers, break-even, profit milestones, key levels, DCA reminders, fear & greed zones, halving, summaries, whales, new-device login…), custom price alerts, per-alert priority and channel, quiet hours, daily limit, pause, alert history and push/Telegram delivery.
+- **Market tab**: companies and governments holding BTC, whale movements (≥ 500 BTC) and public wallets you can follow. Stats: candlesticks, fear & greed gauge, dominance, halving cycle, network fees, drawdown, buy-price map, DCA calendar, fees per platform.
 - Optional Face ID / fingerprint lock (WebAuthn), privacy mode, offline support, demo mode.
 
 ## Architecture
@@ -49,6 +53,17 @@ flowchart LR
 ```
 
 The client never calls CoinGecko: the jobs write `mercado/precio` and `mercado/historico`, and clients only read them (writes from clients are denied by the rules). To save free-tier reads, the client leaves a small summary (in EUR) in `users/{uid}/avisos/config` so the job reads one document per user instead of all their operations.
+
+## Optional integrations (free)
+
+- **Telegram alerts.** Create a bot with @BotFather, then `gh secret set TELEGRAM_BOT_TOKEN --repo <you>/bitcoin-tracker` (paste the token when prompted, never in a chat) and put the bot username in `VITE_TELEGRAM_BOT`. Users link their chat from the Alerts screen with a one-time 15-minute code. Without the secret the job simply skips Telegram.
+- **Companies and governments holding BTC.** Get a free CoinGecko *Demo* API key (https://www.coingecko.com/en/api) and run `gh secret set COINGECKO_DEMO_KEY --repo <you>/bitcoin-tracker`. Without it that section stays empty. The response parsing is tolerant, but it has not been checked against the live API.
+- **Public wallets.** `config/carteras.json` ships empty on purpose: add only addresses that an entity publishes itself, each with a source link. No private individuals.
+- **Fonts.** The display font Satoshi (Fontshare Free Font License) may be self-hosted but not redistributed, so `public/fonts/Satoshi-Variable.woff2` is git-ignored. Download it from Fontshare into that folder (see `public/fonts/LEEME.md`); without it the system font is used.
+
+## Free-tier budget
+
+Per user and run the alert job reads 3 documents (`config`, `estado`, `prueba`) in one collection-group query, plus a few shared market documents per run. At every 15 minutes that is about 96 × 3 = 288 reads per user per day plus ~600 shared reads, so the 50,000 reads/day budget supports roughly 150 users with alerts enabled. Writes are 1 (state) + 1 per alert delivered per run, only when something changes.
 
 ## Technical decisions
 

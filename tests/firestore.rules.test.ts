@@ -75,6 +75,19 @@ describe('mercado', () => {
   })
 })
 
+describe('mercado: documentos nuevos solo lectura', () => {
+  it('ballenas, instituciones, carteras y velas: leer sí, escribir nunca', async () => {
+    for (const id of ['ballenas', 'instituciones', 'carteras', 'velas', 'fng', 'global', 'red', 'estadisticas', 'telegram']) {
+      await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore() as never, `mercado/${id}`), { x: 1 }))
+      await assertSucceeds(getDoc(doc(ana(), `mercado/${id}`)))
+      await assertFails(setDoc(doc(ana(), `mercado/${id}`), { x: 2 }))
+    }
+  })
+  it('sin sesión no se lee', async () => {
+    await assertFails(getDoc(doc(anon(), 'mercado/ballenas')))
+  })
+})
+
 describe('validación de operaciones', () => {
   const crear = (extra: Record<string, unknown>) => setDoc(doc(ana(), 'users/ana/operaciones/o1'), op(extra))
   it('acepta los campos opcionales válidos', async () => {

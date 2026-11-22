@@ -169,3 +169,22 @@ describe('mercado y resúmenes', () => {
     expect(est.correo).toBe('b@x.es')
   })
 })
+
+describe('ballenas y carteras', () => {
+  const grandes = [{ txid: 'a'.repeat(64), btc: 1500, bloque: 900000 }, { txid: 'b'.repeat(64), btc: 600, bloque: 900000 }]
+  it('ballena: solo por encima del umbral de la usuaria', () => {
+    const u = user({ ballena: on({ umbral: 1000 }) })
+    const a = evaluarFrecuentes(ctx({ ballenasNuevas: grandes }), u, estadoInicial())
+    expect(a).toHaveLength(1)
+    expect(a[0].texto).toContain('1500 BTC')
+    expect(evaluarFrecuentes(ctx({ ballenasNuevas: grandes }), user({}), estadoInicial())).toHaveLength(0) // apagado por defecto
+  })
+  it('cartera movida: solo las que sigue y con el interruptor', () => {
+    const cambios = [{ id: 'x', nombre: 'Cartera X', cambioBtc: -120.5 }, { id: 'y', nombre: 'Cartera Y', cambioBtc: 3 }]
+    const u = user({ carteraMovida: on() }, { config: { seguidas: ['x'] } })
+    const a = evaluarFrecuentes(ctx({ carterasCambios: cambios }), u, estadoInicial())
+    expect(a).toHaveLength(1)
+    expect(a[0].texto).toBe('Cartera X ha sacado 120,5 BTC.')
+    expect(evaluarFrecuentes(ctx({ carterasCambios: cambios }), user({}, { config: { seguidas: ['x'] } }), estadoInicial())).toHaveLength(0)
+  })
+})

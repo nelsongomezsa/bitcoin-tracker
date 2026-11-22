@@ -11,7 +11,7 @@ import {
 import { avisosSchema, operacionSchema, perfilSchema, planSchema } from '../lib/schemas'
 import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
-  AVISOS_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, historicoDemo, mercadoDemo, operacionesDemo, planDemo,
+  AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, historicoDemo, mercadoDemo, operacionesDemo, planDemo,
 } from './demoData'
 
 const Ctx = createContext<Datos | null>(null)
@@ -126,6 +126,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
         setMercado({
           precios: t('precios'), maximoHistorico: t('maximoHistorico'), cambio24h: num(d.cambio24h), cambio7d: num(d.cambio7d),
           miedoCodicia: d.miedoCodicia ?? null,
+          athFecha: typeof d.athFecha === 'string' ? new Date(d.athFecha) : null,
           actualizado: d.actualizado instanceof Timestamp ? d.actualizado.toDate() : null,
         })
       }),
@@ -199,4 +200,20 @@ async function registrarDispositivo(uid: string) {
   } catch {
     /* sin conexión o sin permiso: se reintenta en la próxima sesión */
   }
+}
+
+/** Documento compartido de mercado (mercado/<id>), escrito solo por el job. Se escucha solo mientras la pantalla está abierta. */
+export function useMercadoDoc<T = Record<string, unknown>>(id: string): T | null {
+  const { demo } = useAuth()
+  const [datos, setDatos] = useState<T | null>(null)
+  useEffect(() => {
+    if (demo) {
+      const d: Record<string, unknown> = { velas: velasDemo(), fng: fngDemo(), global: GLOBAL_DEMO, red: RED_DEMO, ...demoExtra() }
+      setDatos((d[id] as T) ?? null)
+      return
+    }
+    if (!db) return
+    return onSnapshot(doc(db, `mercado/${id}`), (s) => setDatos(s.exists() ? (s.data() as T) : null))
+  }, [id, demo])
+  return datos
 }

@@ -1,0 +1,5 @@
+{
+  "umbralBtc": 500,
+  "maxBloquesPorEjecucion": 4,
+  "maxMovimientosGuardados": 50
+}

@@ -1,7 +1,7 @@
 // Evaluadores de avisos: funciones puras. Reciben el contexto de mercado, los datos del usuario y su
 // estado (que mutan para recordar lo ya avisado) y devuelven la lista de avisos a enviar.
 import { ajuste, general, zonaDe } from '../../src/shared/avisosCatalogo.mjs'
-import { aMoneda, deMoneda, dinero, num, pct, pctSigno } from './formato.mjs'
+import { aMoneda, btcN, deMoneda, dinero, num, pct, pctSigno } from './formato.mjs'
 import { local } from './tiempo.mjs'
 
 const H = 3600 * 1000
@@ -194,6 +194,21 @@ export function evaluarFrecuentes(ctx, u, est) {
   const cs = aj('copiaSeguridad')
   if (cs.activo && l.dia === 1 && l.hora >= g.horaResumen) {
     out.push(mk(`copiaSeguridad:${l.fecha}`, 'Copia de seguridad', 'Recordatorio mensual: exporta una copia de tus operaciones desde Ajustes.', { prioridad: cs.prioridad, canales: cs.canales, url: '/ajustes', cooldownMs: 20 * H }))
+  }
+
+  // ── Ballenas y carteras que sigue ──
+  const bal = aj('ballena')
+  if (bal.activo && ctx.ballenasNuevas?.length) {
+    for (const m of ctx.ballenasNuevas.filter((x) => x.btc >= (bal.umbral ?? 1000)).slice(0, 3)) {
+      out.push(mk(`ballena:${m.txid.slice(0, 16)}`, 'Ballena detectada', `Se han movido ${btcN(m.btc)} BTC (≈ ${dinero(m.btc * precio, mon)}) en el bloque ${num(m.bloque)}.`, { prioridad: bal.prioridad, canales: bal.canales, url: '/mercado', cooldownMs: 1000 }))
+    }
+  }
+  const cm = aj('carteraMovida')
+  if (cm.activo && ctx.carterasCambios?.length) {
+    const seguidas = new Set(u.config.seguidas ?? [])
+    for (const c of ctx.carterasCambios.filter((x) => seguidas.has(x.id))) {
+      out.push(mk(`cartera:${c.id}:${Math.floor(ctx.ahora / 3600e3)}`, 'Cartera en movimiento', `${c.nombre} ha ${c.cambioBtc < 0 ? 'sacado' : 'recibido'} ${btcN(Math.abs(c.cambioBtc))} BTC.`, { prioridad: cm.prioridad, canales: cm.canales, url: '/mercado', cooldownMs: 1000 }))
+    }
   }
   return out
 }

@@ -3,6 +3,7 @@ import {
   VentaExcedidaError, bajarMedia, btcDeCompra, btcDeVenta, calcularFifo, comparativaPrimerDia, convertir, escenarioPrecio,
   estadoNiveles, estimarIrpf, filaCompra, informeFifoAnual, invertidoPorMes, mejorYPeorCompra, normalizar, ordenarPorFecha,
   progresoDca, progresoObjetivo, proximoNivel, resumen, serieCartera, siVendoHoy, totalPlanificadoPct, precioObjetivoPorGanancia,
+  aSats, btcAcumulado, calendarioDca, comprasConComisionAlta, drawdown, histogramaCompras, hitosCartera, serieRentabilidad,
   type Operacion,
 } from '../calculos'
 import { COMPRAS, PLAN, TOTAL_BTC, TOTAL_CANTIDAD, TOTAL_COMISION } from './fixture'
@@ -244,5 +245,58 @@ describe('objetivos y estadísticas', () => {
     expect(s[0].invertido).toBe(1000)
     expect(s[0].valor).toBeCloseTo(0.0198 * 50000, 6)
     expect(s[1].invertido).toBe(2000)
+  })
+})
+
+describe('estadísticas ampliadas', () => {
+  const serie = [
+    { fecha: '2025-01-01', valor: 1000, invertido: 1000 },
+    { fecha: '2025-01-02', valor: 1200, invertido: 1000 }, // +200
+    { fecha: '2025-01-03', valor: 900, invertido: 1000 }, // −300 (cae desde 1.200: −25 %)
+    { fecha: '2025-01-04', valor: 1500, invertido: 1300 }, // +600 de valor, 300 son dinero nuevo → +300 reales
+  ]
+  it('rentabilidad en el tiempo', () => {
+    const r = serieRentabilidad(serie).map((p) => p.rentabilidad)
+    ;[0, 0.2, -0.1, 1500 / 1300 - 1].forEach((e, i) => expect(r[i]).toBeCloseTo(e, 10))
+  })
+  it('drawdown desde el máximo', () => {
+    const d = drawdown(serie)
+    expect(d[1].caida).toBe(0)
+    expect(d[2].caida).toBeCloseTo(-0.25, 10)
+    expect(d[3].caida).toBe(0)
+  })
+  it('mejor y peor día descuentan el dinero nuevo', () => {
+    const h = hitosCartera(serie)!
+    expect(h.mejor).toEqual({ fecha: '2025-01-04', cambio: 300 })
+    expect(h.peor).toEqual({ fecha: '2025-01-03', cambio: -300 })
+    expect(h.maximo).toEqual({ fecha: '2025-01-04', valor: 1500 })
+    expect(hitosCartera([serie[0]])).toBeNull()
+  })
+  it('mapa de compras: histograma y % en ganancias', () => {
+    const h = histogramaCompras(COMPRAS, 45000, 4)
+    expect(h.bins.reduce((s, b) => s + b.compras, 0)).toBe(10)
+    expect(h.bins.reduce((s, b) => s + b.importe, 0)).toBe(4990)
+    // A 45.000 ganan las compradas a menos de ~45.000: c2, c3, c5, c6, c10 (precio 45.000 con comisión no gana).
+    expect(h.pctEnGanancias).toBeCloseTo(4 / 10, 10)
+  })
+  it('BTC acumulado compra a compra y con ventas', () => {
+    const a = btcAcumulado(COMPRAS)
+    expect(a.at(-1)!.btc).toBeCloseTo(TOTAL_BTC, 10)
+    expect(a.find((x) => x.fecha === '2025-02-03')!.btc).toBeCloseTo(0.0198 + 0.012375 + 0.00495 + 0.00594, 10)
+    const conVenta = btcAcumulado([...COMPRAS, { id: 'v', tipo: 'venta', fecha: '2025-06-01', cantidad: 1790, comision: 10, precio: 60000, moneda: 'EUR' }])
+    expect(conVenta.at(-1)!.btc).toBeCloseTo(TOTAL_BTC - 0.03, 10)
+  })
+  it('calendario de DCA: semanas con y sin compra (lunes a domingo)', () => {
+    const cal = calendarioDca(COMPRAS, '2025-02-09', 4) // las 4 semanas que terminan en la del 03/02 (el 09/02 cae en esa semana)
+    expect(cal.map((s) => s.semana)).toEqual(['2025-01-13', '2025-01-20', '2025-01-27', '2025-02-03'])
+    expect(cal.find((s) => s.semana === '2025-01-20')).toMatchObject({ compras: 1, importe: 500 })
+    expect(cal.find((s) => s.semana === '2025-02-03')).toMatchObject({ compras: 2, importe: 500 })
+    expect(cal.find((s) => s.semana === '2025-01-27')).toMatchObject({ compras: 0, importe: 0 })
+  })
+  it('sats y comisiones altas', () => {
+    expect(aSats(0.00012345)).toBe(12345)
+    expect(aSats(1)).toBe(100_000_000)
+    const altas = comprasConComisionAlta(COMPRAS, 40000)
+    expect(altas.map((f) => f.id)).toEqual(['c5']) // 2 / 40 = 5 %
   })
 })

@@ -64,6 +64,65 @@ export function mercadoDemo(hoy = Date.now()): Mercado {
     cambio7d: eur / sem - 1,
     maximoHistorico: { EUR: Math.round(eur * 1.35), USD: Math.round(eur * 1.35 * 1.08), AUD: Math.round(eur * 1.35 * 1.65) },
     miedoCodicia: { valor: 54, clasificacion: 'Neutral' },
+    athFecha: new Date(hoy - 120 * 86400000),
     actualizado: new Date(hoy),
+  }
+}
+
+// ───── Documentos de mercado de ejemplo (modo demo) ─────
+export function velasDemo(hoy = Date.now()) {
+  const h = historicoDemo(hoy)
+  const diarias = h.slice(-90).map((p, i, a) => {
+    const prev = a[i - 1]?.precio ?? p.precio
+    const alto = Math.max(prev, p.precio) * 1.012
+    const bajo = Math.min(prev, p.precio) * 0.988
+    return [p.t, prev, alto, bajo, p.precio]
+  })
+  const semanales: number[][] = []
+  for (let i = 0; i < h.length - 6; i += 7) {
+    const g = h.slice(i, i + 7)
+    semanales.push([g[0].t, g[0].precio, Math.max(...g.map((x) => x.precio)), Math.min(...g.map((x) => x.precio)), g[g.length - 1].precio])
+  }
+  return { diarias, semanales: semanales.slice(-53) }
+}
+
+export function fngDemo(hoy = Date.now()) {
+  const serie = Array.from({ length: 30 }, (_, i) => ({ t: hoy - (29 - i) * 86400000, v: Math.round(50 + Math.sin(i / 4) * 18 + (i - 15) * 0.3) }))
+  return { valor: 54, clasificacion: 'Neutral', hace1d: 52, hace7d: 47, serie }
+}
+
+export const GLOBAL_DEMO = { dominanciaBtc: 57.4, capitalizacion: { eur: 2.05e12, usd: 2.21e12, aud: 3.38e12 } }
+export const RED_DEMO = { altura: 905000, tarifas: { rapida: 6, media: 4, lenta: 2 }, diasHalving: 650, diasDesdeUltimo: 880, proximoBloque: 1050000 }
+
+export function demoExtra(hoy = Date.now()): Record<string, unknown> {
+  const h = 3600e3
+  return {
+    instituciones: {
+      empresas: [
+        { id: 'demo-a', nombre: 'Empresa Demo A', simbolo: 'DMA', pais: 'US', btc: 210000, valorUsd: 1.5e10, pctSuministro: 1.0 },
+        { id: 'demo-b', nombre: 'Empresa Demo B', simbolo: 'DMB', pais: 'US', btc: 52000, valorUsd: 3.7e9, pctSuministro: 0.25 },
+        { id: 'demo-c', nombre: 'Empresa Demo C', simbolo: 'DMC', pais: 'CA', btc: 30000, valorUsd: 2.1e9, pctSuministro: 0.14 },
+      ],
+      gobiernos: [{ id: 'demo-g', nombre: 'Gobierno Demo', simbolo: null, pais: 'XX', btc: 190000, valorUsd: 1.3e10, pctSuministro: 0.9 }],
+      movimientos: [
+        { entidad: 'Empresa Demo A', tipo: 'compra', btc: 1234, precioUsd: 64000, fecha: hoy - 20 * h },
+        { entidad: 'Empresa Demo C', tipo: 'compra', btc: 300, precioUsd: 63500, fecha: hoy - 70 * h },
+        { entidad: 'Empresa Demo B', tipo: 'venta', btc: 150, precioUsd: 66000, fecha: hoy - 130 * h },
+      ],
+      detalles: { 'demo-a': [[hoy - 400 * 86400000, 150000], [hoy - 200 * 86400000, 190000], [hoy, 210000]], 'demo-b': [[hoy - 300 * 86400000, 40000], [hoy, 52000]], 'demo-c': [[hoy - 300 * 86400000, 20000], [hoy, 30000]], 'demo-g': [[hoy - 300 * 86400000, 180000], [hoy, 190000]] },
+    },
+    ballenas: {
+      umbralBtc: 500,
+      movimientos: [
+        { txid: 'd'.repeat(64), btc: 5200, bloque: 904998, hora: hoy - 0.4 * h },
+        { txid: 'e'.repeat(64), btc: 1800, bloque: 904990, hora: hoy - 2 * h },
+        { txid: 'f'.repeat(64), btc: 720, bloque: 904977, hora: hoy - 5 * h },
+        { txid: '0'.repeat(64), btc: 515, bloque: 904961, hora: hoy - 9 * h },
+      ],
+    },
+    carteras: {
+      carteras: { 'demo-1': { nombre: 'Cartera pública de ejemplo', descripcion: 'Dato ficticio del modo demo.', fuente: '', saldoBtc: 12345.67 } },
+      cambios: [],
+    },
   }
 }

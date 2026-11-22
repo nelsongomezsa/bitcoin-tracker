@@ -4,6 +4,11 @@ import { crearEnviarTelegram, vincularChats } from './telegram.mjs'
 import { procesarUsuarios } from './avisos/orquestador.mjs'
 import { actualizarExtremos } from './mercado/extremos.mjs'
 import { infoRed } from './mercado/red.mjs'
+import { bloquesNuevos, mezclarMovimientos } from './mercado/ballenas.mjs'
+import { INTERVALO_MS, consultarCarteras, detectarCambios } from './mercado/carteras.mjs'
+import { readFileSync } from 'node:fs'
+
+const leerJson = (ruta) => JSON.parse(readFileSync(new URL(ruta, import.meta.url), 'utf8'))
 
 const MONEDAS = ['eur', 'usd', 'aud']
 
@@ -36,6 +41,7 @@ async function main() {
   await refPrecio.set({
     precios,
     maximoHistorico: por('ath'),
+    athFecha: eur.ath_date ?? null,
     cambio1h: cambio('1h'),
     cambio24h: cambio('24h'),
     cambio7d: cambio('7d'),
@@ -55,6 +61,38 @@ async function main() {
     console.warn('mempool.space no responde:', e.message)
   }
   console.log('Precio actualizado')
+
+  // Ballenas: bloques nuevos con transacciones grandes (mempool.space).
+  const cfgBallenas = leerJson('./config/ballenas.json')
+  try {
+    const refB = db.doc('mercado/ballenas')
+    const previo = (await refB.get()).data() ?? {}
+    const r = await bloquesNuevos({ getJson, ultimoBloque: previo.ultimoBloque ?? null, umbralBtc: cfgBallenas.umbralBtc, maxBloques: cfgBallenas.maxBloquesPorEjecucion })
+    ctx.ballenasNuevas = r.movimientos
+    await refB.set({
+      ultimoBloque: r.altura, umbralBtc: cfgBallenas.umbralBtc,
+      movimientos: mezclarMovimientos(previo.movimientos ?? [], r.movimientos, cfgBallenas.maxMovimientosGuardados),
+      actualizado: FieldValue.serverTimestamp(),
+    })
+  } catch (e) {
+    console.warn('Ballenas no actualizadas:', e.message.slice(0, 80))
+  }
+
+  // Carteras públicas seguibles: una consulta por hora.
+  try {
+    const lista = leerJson('../config/carteras.json').carteras ?? []
+    const refC = db.doc('mercado/carteras')
+    const prevC = (await refC.get()).data() ?? {}
+    if (lista.length && ahora - (prevC.ultimaConsulta ?? 0) >= INTERVALO_MS) {
+      const nuevas = await consultarCarteras({ getJson, lista })
+      ctx.carterasCambios = detectarCambios(prevC.carteras, nuevas)
+      await refC.set({ ultimaConsulta: ahora, carteras: nuevas, cambios: ctx.carterasCambios.map((c) => ({ ...c, hora: ahora })), actualizado: FieldValue.serverTimestamp() })
+    } else if (!lista.length && !prevC.carteras) {
+      await refC.set({ ultimaConsulta: ahora, carteras: {}, cambios: [], actualizado: FieldValue.serverTimestamp() })
+    }
+  } catch (e) {
+    console.warn('Carteras no actualizadas:', e.message.slice(0, 80))
+  }
 
   const token = process.env.TELEGRAM_BOT_TOKEN
   const enviarTelegram = crearEnviarTelegram(token)

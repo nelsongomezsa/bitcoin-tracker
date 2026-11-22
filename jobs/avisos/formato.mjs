@@ -6,6 +6,8 @@ export const dinero = (n, m = 'EUR') => `${n0.format(n)} ${SIMBOLO[m] ?? m}`
 export const pct = (fraccion) => `${n1.format(Math.abs(fraccion) * 100)} %`
 export const pctSigno = (fraccion) => `${fraccion >= 0 ? '+' : '−'}${pct(fraccion)}`
 export const num = (n) => n0.format(n)
+const n2 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 })
+export const btcN = (n) => n2.format(n)
 
 /** Convierte un importe en EUR a otra moneda usando el cociente de precios de BTC. */
 export function aMoneda(eur, moneda, precios) {

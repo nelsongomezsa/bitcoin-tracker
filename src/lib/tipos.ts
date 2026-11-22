@@ -72,6 +72,8 @@ export interface Mercado {
   cambio24h: number
   cambio7d: number
   maximoHistorico: PreciosBtc
+  /** Fecha del máximo histórico (CoinGecko), si el job la ha guardado. */
+  athFecha?: Date | null
   miedoCodicia: { valor: number; clasificacion: string } | null
   actualizado: Date | null
 }

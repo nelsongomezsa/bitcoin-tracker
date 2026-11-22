@@ -435,3 +435,97 @@ export function resumenMensual(ops: Operacion[], mes: string, precioActual: numb
     rentabilidad: despues.rentabilidad,
   }
 }
+
+// ───────────── Estadísticas ampliadas ─────────────
+
+/** Rentabilidad (valor / invertido − 1) en el tiempo, como fracción. */
+export const serieRentabilidad = (serie: PuntoCartera[]) =>
+  serie.filter((p) => p.invertido > 0).map((p) => ({ fecha: p.fecha, rentabilidad: p.valor / p.invertido - 1 }))
+
+/** Cuánto ha llegado a caer la cartera desde su máximo anterior (fracción negativa o cero). */
+export function drawdown(serie: PuntoCartera[]): { fecha: string; caida: number }[] {
+  let max = 0
+  return serie.map((p) => {
+    max = Math.max(max, p.valor)
+    return { fecha: p.fecha, caida: max > 0 ? p.valor / max - 1 : 0 }
+  })
+}
+
+/** Mejor día, peor día y valor máximo. El cambio de cada día descuenta el dinero nuevo que se metió. */
+export function hitosCartera(serie: PuntoCartera[]) {
+  if (serie.length < 2) return null
+  let mejor = { fecha: serie[1].fecha, cambio: -Infinity }
+  let peor = { fecha: serie[1].fecha, cambio: Infinity }
+  for (let i = 1; i < serie.length; i++) {
+    const cambio = serie[i].valor - serie[i - 1].valor - (serie[i].invertido - serie[i - 1].invertido)
+    if (cambio > mejor.cambio) mejor = { fecha: serie[i].fecha, cambio }
+    if (cambio < peor.cambio) peor = { fecha: serie[i].fecha, cambio }
+  }
+  const max = serie.reduce((m, p) => (p.valor > m.valor ? p : m), serie[0])
+  return { mejor, peor, maximo: { fecha: max.fecha, valor: max.valor } }
+}
+
+/** Histograma de a qué precios has comprado y qué % de compras está en ganancias. */
+export function histogramaCompras(ops: Operacion[], precioActual: number, grupos = 8) {
+  const compras = ops.filter((o) => o.tipo === 'compra')
+  if (!compras.length) return { bins: [] as { desde: number; hasta: number; compras: number; importe: number }[], pctEnGanancias: 0 }
+  const precios = compras.map((o) => o.precio)
+  const min = Math.min(...precios), max = Math.max(...precios)
+  const ancho = (max - min) / grupos || 1
+  const bins = Array.from({ length: grupos }, (_, i) => ({ desde: min + i * ancho, hasta: min + (i + 1) * ancho, compras: 0, importe: 0 }))
+  for (const o of compras) {
+    const i = Math.min(grupos - 1, Math.floor((o.precio - min) / ancho))
+    bins[i].compras++
+    bins[i].importe += o.cantidad
+  }
+  const enGanancias = compras.filter((o) => filaCompra(o, precioActual).ganancia > 0).length
+  return { bins, pctEnGanancias: enGanancias / compras.length }
+}
+
+/** BTC acumulado compra a compra (escalonado). */
+export function btcAcumulado(ops: Operacion[]): { fecha: string; btc: number }[] {
+  let btc = 0
+  const orden = ordenarPorFecha(ops)
+  const por = new Map<string, number>()
+  for (const o of orden) {
+    btc += o.tipo === 'compra' ? btcDeCompra(o) : -btcDeVenta(o)
+    por.set(o.fecha, btc)
+  }
+  return [...por.entries()].map(([fecha, b]) => ({ fecha, btc: Math.max(0, b) }))
+}
+
+/** Calendario de DCA: una casilla por semana (lunes UTC), con el nº de compras y el importe. */
+export function calendarioDca(ops: Operacion[], hasta: string, semanas = 26): { semana: string; compras: number; importe: number }[] {
+  const lunesDe = (iso: string) => {
+    const t = Date.parse(`${iso}T00:00:00Z`)
+    const d = new Date(t)
+    const dif = (d.getUTCDay() + 6) % 7
+    return new Date(t - dif * 86400000).toISOString().slice(0, 10)
+  }
+  const fin = Date.parse(`${lunesDe(hasta)}T00:00:00Z`)
+  const mapa = new Map<string, { compras: number; importe: number }>()
+  for (const o of ops) {
+    if (o.tipo !== 'compra') continue
+    const k = lunesDe(o.fecha)
+    const v = mapa.get(k) ?? { compras: 0, importe: 0 }
+    v.compras++
+    v.importe += o.cantidad
+    mapa.set(k, v)
+  }
+  return Array.from({ length: semanas }, (_, i) => {
+    const semana = new Date(fin - (semanas - 1 - i) * 7 * 86400000).toISOString().slice(0, 10)
+    return { semana, ...(mapa.get(semana) ?? { compras: 0, importe: 0 }) }
+  })
+}
+
+export const SATS_POR_BTC = 100_000_000
+export const aSats = (btc: number) => Math.round(btc * SATS_POR_BTC)
+
+/** Compras con comisión por encima del umbral (3 %), de más a menos cara. */
+export function comprasConComisionAlta(ops: Operacion[], precioActual: number) {
+  return ops
+    .filter((o) => o.tipo === 'compra')
+    .map((o) => filaCompra(o, precioActual))
+    .filter((f) => f.comisionAlta)
+    .sort((a, b) => b.pctComision - a.pctComision)
+}
