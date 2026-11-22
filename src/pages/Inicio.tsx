@@ -15,6 +15,10 @@ import { btcConSigno, claseSigno, dinero, fechaCorta, flecha, porcentaje, porcen
 import { filasTrades } from '../lib/trading'
 import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
 
+const minutosDesde = (d: Date) => {
+  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`
+}
 const nf = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function Inicio() {
@@ -80,7 +84,7 @@ export default function Inicio() {
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Metido</span><span className="num">{res ? v.$(res.invertido) : '—'}</span></div>
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Precio de BTC</span>{precio ? <PrecioVivo valor={precio} texto={dinero(precio, moneda, 0)} /> : <span className="num">—</span>}</div>
         </div>
-        {v.mercado?.actualizado && <p className="notice">Precio actualizado {horaCorta(v.mercado.actualizado)}</p>}
+        {v.enDirecto ? <p className="notice">Precio en directo</p> : v.mercado?.actualizado && <p className="notice">Precio de hace {minutosDesde(v.mercado.actualizado)} · {horaCorta(v.mercado.actualizado)}</p>}
       </section>
 
       <div className="chips" aria-label="Resumen del mercado">
@@ -101,6 +105,7 @@ export default function Inicio() {
 
       {sinOps && <p className="card muted">Todavía no has apuntado ninguna operación. Empieza con «Añadir compra».</p>}
 
+      <Link className="btn" to="/grafico" style={{ alignSelf: 'flex-start' }}>Abrir gráfico pro</Link>
       <PrecioChart historico={v.historico} precioActualEur={v.precios?.EUR} factor={factor} ops={v.ops} precioMedio={res?.precioMedioReal ?? 0} proximoNivel={nivelEnMoneda} />
 
       <section className="card stack" aria-label="Últimas compras">

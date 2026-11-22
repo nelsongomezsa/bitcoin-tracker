@@ -11,6 +11,7 @@ const Estadisticas = lazy(() => import('./pages/Estadisticas'))
 const Plan = lazy(() => import('./pages/Plan'))
 const Avisos = lazy(() => import('./pages/Avisos'))
 const Trading = lazy(() => import('./pages/Trading'))
+const GraficoPro = lazy(() => import('./pages/GraficoPro'))
 const Mercado = lazy(() => import('./pages/Mercado'))
 const Ajustes = lazy(() => import('./pages/Ajustes'))
 const Calculadoras = lazy(() => import('./pages/Calculadoras'))
@@ -33,6 +34,7 @@ export default function App() {
     <DataProvider>
       <Suspense fallback={<main className="app"><p className="muted" role="status">Cargando…</p></main>}>
       <Routes>
+        <Route path="grafico" element={<GraficoPro />} />
         <Route element={<Layout />}>
           <Route index element={<Inicio />} />
           <Route path="operaciones" element={<Operaciones />} />

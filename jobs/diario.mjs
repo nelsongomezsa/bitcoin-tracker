@@ -4,6 +4,7 @@ import { crearEnviarTelegram } from './telegram.mjs'
 import { limpiarHistorial, procesarUsuarios } from './avisos/orquestador.mjs'
 import { extremosDeHistorico, precioHace } from './mercado/extremos.mjs'
 import { velasDiarias, velasSemanales } from './mercado/velas.mjs'
+import { guardarVelas, clavesPendientes } from './mercado/kraken.mjs'
 import { actualizarInstituciones } from './mercado/instituciones.mjs'
 
 async function main() {
@@ -26,6 +27,8 @@ async function main() {
   } catch (e) {
     console.warn('Velas no actualizadas:', e.message)
   }
+
+  await guardarVelas({ db, FieldValue, getJson, claves: clavesPendientes(ahora, { diario: true }) })
 
   const estad = {
     extremos: extremosDeHistorico(puntos, ahora),

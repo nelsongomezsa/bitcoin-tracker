@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { useVista } from '../state/vista'
 import Cabecera from '../components/Cabecera'
@@ -20,6 +20,7 @@ export const AVISO_TRADING = 'El trading con apalancamiento puede hacerte perder
 
 export default function Trading() {
   const v = useVista()
+  const nav = useNavigate()
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [ficha, setFicha] = useState<FilaTrade | null>(null)
   const [hoja, setHoja] = useState<null | { trade?: Trade; plantilla?: boolean }>(null)
@@ -147,7 +148,8 @@ export default function Trading() {
             <div className="row wrap">
               <button onClick={() => descargarTradesCsv(v.trades)}>Descargar CSV</button>
               <button onClick={() => descargarTradesXlsx(v.trades)}>Descargar Excel</button>
-              <Link className="btn" to="/ajustes#importar-trades">Importar desde Excel</Link>
+              <Link className="btn" to="/grafico?tf=5m">Gráfico pro</Link>
+              <Link className="btn" to="/ajustes">Importar desde Excel</Link>
             </div>
           </section>
         </>
@@ -161,6 +163,7 @@ export default function Trading() {
           onCerrar={() => setFicha(null)}
           onEditar={() => { const t = original(ficha.trade.id); setFicha(null); setHoja({ trade: t }) }}
           onDuplicar={() => duplicar(ficha.trade)}
+          onGrafico={() => nav('/grafico?tf=5m')}
           onBorrar={() => { setBorrar(ficha.trade); setFicha(null) }}
         />
       )}

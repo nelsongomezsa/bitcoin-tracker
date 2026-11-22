@@ -153,3 +153,21 @@ export function demoExtra(hoy = Date.now()): Record<string, unknown> {
     },
   }
 }
+
+/** Velas sintéticas y deterministas para el modo demo: {EUR, USD} con [t (s), o, h, l, c, volumen]. */
+export function velasSinteticas(minutos: number, n = 300, hoy = Date.now()) {
+  const paso = minutos * 60
+  const fin = Math.floor(hoy / 1000 / paso) * paso
+  const ref = historicoDemo(hoy).at(-1)!.precio
+  const filas: number[][] = []
+  let prev = ref * (1 + Math.sin(0) * 0.01)
+  for (let i = n - 1; i >= 0; i--) {
+    const k = n - 1 - i
+    const c = ref * (1 + Math.sin(k / 9) * 0.012 + Math.sin(k / 3.1) * 0.004 + (k - n) * 0.00004 * Math.sqrt(minutos))
+    const alto = Math.max(prev, c) * (1 + 0.0015 + (k % 5) * 0.0004)
+    const bajo = Math.min(prev, c) * (1 - 0.0015 - (k % 4) * 0.0004)
+    filas.push([fin - i * paso, Math.round(prev * 100) / 100, Math.round(alto * 100) / 100, Math.round(bajo * 100) / 100, Math.round(c * 100) / 100, Math.round((40 + (k % 11) * 9 + Math.abs(c - prev) / 20) * 100) / 100])
+    prev = c
+  }
+  return { EUR: filas, USD: filas.map(([t, o, h, l, c, v]) => [t, o * 1.08, h * 1.08, l * 1.08, c * 1.08, v]) }
+}
