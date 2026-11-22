@@ -64,12 +64,10 @@ export default function Inicio() {
             <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir(res?.valorHoy ?? 0, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
           ))}
         </div>
+        {res && !v.privado && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} /></div>}
         {res && (
-          <div className="row between" style={{ alignItems: 'flex-end' }}>
-            <div className={`mid ${claseSigno(res.ganancia)}`}>
-              {flecha(res.ganancia)} {v.$s(res.ganancia)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.rentabilidad)})</span>
-            </div>
-            {!v.privado && <Sparkline valores={spark} />}
+          <div className={`mid ${claseSigno(res.ganancia)}`}>
+            {flecha(res.ganancia)} {v.$s(res.ganancia)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.rentabilidad)})</span>
           </div>
         )}
         <div className="grid2">
