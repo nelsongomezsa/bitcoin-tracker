@@ -188,3 +188,34 @@ describe('ballenas y carteras', () => {
     expect(evaluarFrecuentes(ctx({ carterasCambios: cambios }), user({}, { config: { seguidas: ['x'] } }), estadoInicial())).toHaveLength(0)
   })
 })
+
+describe('trading', () => {
+  const abierto = (extra = {}) => ({ id: 'a1', direccion: 'largo', apalancamiento: 5, precioEntrada: 100, moneda: 'EUR', fechaInicio: '2025-05-20', comisiones: 0, ...extra })
+  const u = (ajustes, trades) => user(ajustes, { resumen: { tradesAbiertos: trades } })
+  it('trade abierto más de X días, con repetición cada 3 días', () => {
+    const a = evaluarFrecuentes(ctx(), u({ tradeDias: on({ umbral: 7 }) }, [abierto(), abierto({ id: 'a2', fechaInicio: '2025-06-01' })]), estadoInicial())
+    expect(claves(a)).toEqual(['tradeDias:a1'])
+    expect(a[0].cooldownMs).toBe(3 * 24 * 3600e3)
+    expect(evaluarFrecuentes(ctx(), u({ tradeDias: { activo: false } }, [abierto()]), estadoInicial())).toHaveLength(0)
+  })
+  it('% del trade: largo y corto, apalancamiento y comisiones; umbral y dirección', () => {
+    const p = (eur) => ctx({ precios: P(eur) })
+    // largo x5, precio +3 % → +15 %
+    expect(claves(evaluarFrecuentes(p(103), u({ tradePct: on({ umbral: 10 }) }, [abierto()]), estadoInicial()))).toEqual(['tradePct:a1:sube'])
+    // las comisiones restan: +3 % × 5 − 6 % = +9 % → no llega al 10 %
+    expect(evaluarFrecuentes(p(103), u({ tradePct: on({ umbral: 10 }) }, [abierto({ comisiones: 6 })]), estadoInicial())).toHaveLength(0)
+    // corto: precio +3 % → −15 %
+    expect(claves(evaluarFrecuentes(p(103), u({ tradePct: on({ umbral: 10 }) }, [abierto({ direccion: 'corto' })]), estadoInicial()))).toEqual(['tradePct:a1:baja'])
+    expect(evaluarFrecuentes(p(103), u({ tradePct: on({ umbral: 10, direccion: 'perdida' }) }, [abierto()]), estadoInicial())).toHaveLength(0)
+    expect(evaluarFrecuentes(p(100.5), u({ tradePct: on({ umbral: 10 }) }, [abierto()]), estadoInicial())).toHaveLength(0)
+  })
+  it('usa el precio de la moneda del trade', () => {
+    const t = abierto({ moneda: 'USD', precioEntrada: 55000 }) // USD = EUR × 1,1 → 50000 € = 55000 $
+    expect(evaluarFrecuentes(ctx({ precios: P(50000) }), u({ tradePct: on({ umbral: 1 }) }, [t]), estadoInicial())).toHaveLength(0)
+  })
+  it('sin trades abiertos no hace nada y el aviso respeta prioridad y canales del ajuste', () => {
+    expect(evaluarFrecuentes(ctx(), u({ tradeDias: on() }, undefined), estadoInicial())).toHaveLength(0)
+    const a = evaluarFrecuentes(ctx(), u({ tradeDias: on({ umbral: 1, prioridad: 'urgente', canales: ['push'] }) }, [abierto()]), estadoInicial())
+    expect(a[0]).toMatchObject({ prioridad: 'urgente', canales: ['push'] })
+  })
+})

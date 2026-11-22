@@ -199,3 +199,12 @@ export function informeTradingAnual(
 export function tradeAbiertoSuperaDias(t: Trade, hoy: string, dias: number): boolean {
   return t.estado === 'abierto' && diasEntre(t.fechaInicio, hoy) > dias
 }
+
+/** Precio de BTC en EUR el día `fecha` con el histórico diario guardado [{t en ms, precio}]. null si no hay un punto a menos de 2 días. */
+export function precioEurEnFecha(historico: { t: number; precio: number }[], fecha: string, actualEur?: number | null, hoy?: string): number | null {
+  if (actualEur && hoy && fecha === hoy) return actualEur
+  const objetivo = aMs(fecha) + MS_DIA / 2
+  let mejor: { t: number; precio: number } | null = null
+  for (const p of historico) if (!mejor || Math.abs(p.t - objetivo) < Math.abs(mejor.t - objetivo)) mejor = p
+  return mejor && Math.abs(mejor.t - objetivo) <= 2 * MS_DIA ? mejor.precio : null
+}

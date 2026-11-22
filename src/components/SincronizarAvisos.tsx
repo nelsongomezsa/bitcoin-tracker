@@ -42,6 +42,7 @@ export default function SincronizarAvisos() {
           dineroMeta: d.objetivos.dineroMeta ?? null,
           ultimaCompra: compras.at(-1)?.fecha ?? null,
           anioAnterior,
+          tradesAbiertos: d.trades.filter((t) => t.estado === 'abierto').slice(0, 20).map((t) => ({ id: t.id.slice(0, 40), direccion: t.direccion, apalancamiento: t.apalancamiento, precioEntrada: t.precioEntrada, moneda: t.moneda, fechaInicio: t.fechaInicio, ...(t.comisiones != null ? { comisiones: t.comisiones } : {}) })),
           mesAnterior: ops.some((o) => o.fecha.slice(0, 7) <= ant) ? (({ metido, medioAntes, medioDespues, rentabilidad }) => ({ mes: ant, metido, medioAntes, medioDespues, rentabilidad }))(resumenMensual(ops, ant, precio)) : null,
         }
         const clave = JSON.stringify(res)

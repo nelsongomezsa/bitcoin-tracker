@@ -5,6 +5,7 @@ export const SECCIONES = [
   ['precio', 'Precio'],
   ['cartera', 'Mi cartera'],
   ['plan', 'Mi plan'],
+  ['trading', 'Trading'],
   ['mercado', 'Mercado'],
   ['ballenas', 'Ballenas y carteras'],
   ['resumenes', 'Resúmenes'],
@@ -40,6 +41,9 @@ export const CATALOGO = [
     { nombre: 'hora', tipo: 'numero', etiqueta: 'Hora (0-23)', min: 0, max: 23 }] },
   { clave: 'dcaSaltado', seccion: 'plan', titulo: 'DCA saltado', desc: 'Si pasan 8 días sin ninguna compra.', defecto: { activo: false } },
   { clave: 'inicioDca', seccion: 'plan', titulo: 'Inicio de DCA', desc: 'Cuando BTC toca el precio de arranque que pusiste en el plan.', defecto: { activo: false } },
+  // Trading
+  { clave: 'tradeDias', seccion: 'trading', titulo: 'Trade abierto desde hace demasiado', desc: 'Un trade sin cerrar lleva más de X días. Se repite cada 3 días.', defecto: { activo: false, umbral: 7 }, umbral: U('Días', 1, 365) },
+  { clave: 'tradePct', seccion: 'trading', titulo: 'Trade abierto con un % grande', desc: 'Un trade sin cerrar va en −X % o en +X % (con tu apalancamiento y comisiones).', defecto: { activo: false, umbral: 10, direccion: 'ambos' }, umbral: U('Porcentaje (%)', 1, 500), campos: [{ nombre: 'direccion', tipo: 'select', etiqueta: 'Avisar', opciones: [['ambos', 'En pérdida y en ganancia'], ['perdida', 'Solo en pérdida'], ['ganancia', 'Solo en ganancia']] }] },
   // Mercado
   { clave: 'miedoExtremo', seccion: 'mercado', titulo: 'Miedo extremo', desc: 'El índice de miedo y codicia baja del umbral (se evalúa una vez al día).', defecto: { activo: false, umbral: 20 }, umbral: U('Índice máximo', 1, 49) },
   { clave: 'codiciaExtrema', seccion: 'mercado', titulo: 'Codicia extrema', desc: 'El índice de miedo y codicia supera el umbral (se evalúa una vez al día).', defecto: { activo: false, umbral: 80 }, umbral: U('Índice mínimo', 51, 100) },

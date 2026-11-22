@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../state/auth'
 import { useVista } from '../state/vista'
 import Sheet from '../components/Sheet'
@@ -6,10 +6,11 @@ import Cabecera from '../components/Cabecera'
 import { Link } from 'react-router-dom'
 import { MONEDAS } from '../lib/schemas'
 import { informeFifoAnual } from '../lib/calculos'
-import { dinero, fechaCorta } from '../lib/format'
+import { informeTradingAnual, precioEurEnFecha } from '../lib/trading'
+import { btcConSigno, dinero, dineroConSigno, fechaCorta, hoyISO } from '../lib/format'
 import { leerArchivo, mensajeImportacion, type ResultadoImportacion } from '../lib/importar'
 import { leerArchivoTrades, type ResultadoTrades } from '../lib/importarTrades'
-import { descargarCsv, descargarInforme, descargarTradesCsv, descargarTradesXlsx, descargarXlsx, informeFifoCsv } from '../lib/exportar'
+import { descargarCsv, descargarInforme, descargarInformeTrading, informeTradingCsv, descargarTradesCsv, descargarTradesXlsx, descargarXlsx, informeFifoCsv } from '../lib/exportar'
 import { activarBloqueo, bloqueoActivo, bloqueoSoportado, desactivarBloqueo } from '../lib/bloqueo'
 import { borrarCuenta } from '../lib/borrarCuenta'
 import { confirmarAltaTotp, iniciarAltaTotp, mfaHabilitado } from '../lib/mfa'
@@ -100,6 +101,11 @@ export default function Ajustes() {
 
   let informe: ReturnType<typeof informeFifoAnual> | null = null
   try { informe = informeFifoAnual(v.ops, anio) } catch { /* operaciones incoherentes */ }
+
+  const informeT = useMemo(
+    () => informeTradingAnual(v.trades, anio, (f) => precioEurEnFecha(v.historico, f, v.precios?.EUR, hoyISO())),
+    [v.trades, v.historico, v.precios, anio],
+  )
 
   async function toggleBloqueo(on: boolean) {
     setMsg('')
@@ -242,6 +248,27 @@ export default function Ajustes() {
           </>
         )}
         <p className="notice">Criterio FIFO (primero en entrar, primero en salir). Es una ayuda para tu declaración, no asesoramiento fiscal.</p>
+        {v.perfil.mostrarTrading && (
+          <div className="stack" aria-label="Trading del año">
+            <h3>Trading en {anio}</h3>
+            {informeT.filas.length === 0 ? <p className="muted">No hay trades cerrados en {anio}.</p> : (
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table>
+                    <thead><tr><th>Cierre</th><th>BTC</th><th>EUR al cambio del día</th></tr></thead>
+                    <tbody>
+                      {informeT.filas.map((x, i) => <tr key={i}><td className="num">{fechaCorta(x.fecha)}</td><td className={`num ${x.btc >= 0 ? 'gain' : 'loss'}`}>{x.btc >= 0 ? '▲' : '▼'} {v.privado ? '••••' : btcConSigno(x.btc)}</td><td className="num">{x.eur == null ? '—' : v.privado ? '••••' : dineroConSigno(x.eur, 'EUR')}</td></tr>)}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="num">Total: {v.privado ? '••••' : `${btcConSigno(informeT.totalBtc)} · ${dineroConSigno(informeT.totalEur, 'EUR')}`}</p>
+                {informeT.sinPrecio > 0 && <p className="notice">{informeT.sinPrecio} trade(s) sin precio histórico de ese día: no suman al total en EUR.</p>}
+                <button onClick={() => descargarInformeTrading(informeTradingCsv(informeT.filas), anio)}>Descargar trading (CSV)</button>
+              </>
+            )}
+            <p className="notice">Orientación, no asesoramiento fiscal: la ganancia o pérdida de cada trade cerrado se valora en EUR con el precio de BTC del día de cierre (histórico guardado). Consulta con un profesional cómo declararlo.</p>
+          </div>
+        )}
       </section>
 
       {soporteBloqueo && (

@@ -61,3 +61,9 @@ export function descargarTradesXlsx(ts: Trade[], nombre = 'trades.xlsx') {
   const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
   descargar(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombre)
 }
+
+export function informeTradingCsv(filas: { fecha: string; btc: number; eur: number | null }[]): string {
+  const cab = ['Fecha cierre', 'BTC ganados (o perdidos)', 'Valor en EUR al precio del día']
+  return '﻿' + [cab, ...filas.map((f) => [f.fecha, f.btc, f.eur == null ? '' : f.eur.toFixed(2)])].map((r) => r.join(',')).join('\r\n')
+}
+export const descargarInformeTrading = (csv: string, anio: number) => descargar(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `informe-trading-${anio}.csv`)

@@ -121,3 +121,14 @@ describe('esquema Zod', () => {
     expect(tradeSchema.safeParse({ estado: 'abierto', direccion: 'corto', fechaInicio: '2025-03-01', precioEntrada: 1 }).success).toBe(true)
   })
 })
+
+import { precioEurEnFecha } from '../trading'
+describe('precio histórico por día', () => {
+  const h = [{ t: Date.parse('2025-03-01T00:00:00Z'), precio: 80000 }, { t: Date.parse('2025-03-02T00:00:00Z'), precio: 82000 }, { t: Date.parse('2025-03-03T00:00:00Z'), precio: 81000 }]
+  it('el punto más cercano; hoy usa el actual; sin dato cerca da null', () => {
+    expect(precioEurEnFecha(h, '2025-03-02')).toBe(82000)
+    expect(precioEurEnFecha(h, '2025-03-03', 90000, '2025-03-03')).toBe(90000)
+    expect(precioEurEnFecha(h, '2025-03-20')).toBeNull()
+    expect(precioEurEnFecha([], '2025-03-02')).toBeNull()
+  })
+})
