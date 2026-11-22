@@ -10,8 +10,9 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // 'prompt': el service worker nuevo espera hasta que la usuaria pulsa «Actualizar» (lo gestiona AvisoActualizacion).
+      registerType: 'prompt',
+      injectRegister: false,
       injectManifest: { maximumFileSizeToCacheInBytes: 3 * 1024 * 1024 },
       manifest: {
         name: 'Bitcoin Tracker',

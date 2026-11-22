@@ -9,6 +9,8 @@ precacheAndRoute(self.__WB_MANIFEST)
 self.addEventListener('message', (e) => {
   if (e.data?.type === 'SKIP_WAITING') void self.skipWaiting()
 })
+// Al activarse la versión nueva toma el control de las pestañas abiertas.
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()))
 
 // Web Push (FCM): muestra la notificación con el título y el texto recibidos.
 self.addEventListener('push', (event) => {

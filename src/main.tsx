@@ -5,6 +5,7 @@ import '@fontsource/jetbrains-mono/latin-400.css'
 import '@fontsource/jetbrains-mono/latin-500.css'
 import '@fontsource/jetbrains-mono/latin-700.css'
 import App from './App'
+import AvisoActualizacion from './components/AvisoActualizacion'
 import { AuthProvider } from './state/auth'
 import './styles/global.css'
 
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <App />
+        <AvisoActualizacion />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
