@@ -29,7 +29,7 @@ Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.
 ### 22 de noviembre de 2026
 - **Ballenas, empresas y gobiernos con BTC** y carteras públicas que se pueden seguir, en la pestaña Mercado.
 - **Estadísticas ampliadas** de la cartera, de las compras y del mercado.
-- **Avisos push** (y Telegram opcional): unos 40 avisos con horas de silencio, límite diario y prioridad.
+- **Avisos push** (y Telegram opcional): unos 35 avisos con horas de silencio, límite diario y prioridad.
 - **Aviso de actualización:** cuando hay una versión nueva de la app, aparece «Hay una versión nueva · Actualizar».
 - **Rediseño** de toda la app y formulario con plataforma y comisión en € o en %.
 - Primera versión: compras y ventas, FIFO, plan, calculadoras, importar y exportar, modo demo y seguridad.
