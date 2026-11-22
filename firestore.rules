@@ -65,10 +65,12 @@ service cloud.firestore {
             && esNumero(d.capital) && d.capital >= 0 && d.capital < 1000000000
             && d.nivelesClave is list && d.nivelesClave.size() <= 20
             && d.dca is map
-            && d.dca.keys().hasOnly(['inicio', 'porcentajeSemanal', 'semanas'])
+            && d.dca.keys().hasOnly(['inicio', 'porcentajeSemanal', 'semanas', 'precioInicio', 'monedaInicio'])
             && (!('inicio' in d.dca) || fechaValida(d.dca.inicio))
             && esNumero(d.dca.porcentajeSemanal) && d.dca.porcentajeSemanal >= 0 && d.dca.porcentajeSemanal <= 100
             && d.dca.semanas is int && d.dca.semanas >= 0 && d.dca.semanas <= 520
+            && (!('precioInicio' in d.dca) || (esNumero(d.dca.precioInicio) && d.dca.precioInicio > 0))
+            && (!('monedaInicio' in d.dca) || esMoneda(d.dca.monedaInicio))
             && (!('objetivos' in d) || (d.objetivos is map && d.objetivos.keys().size() <= 10));
         }
         allow read, delete: if isOwner(userId);
@@ -76,18 +78,77 @@ service cloud.firestore {
       }
 
       match /avisos/config {
+        function generalValido(g) {
+          return g is map
+            && g.keys().hasOnly(['zona', 'silencioDesde', 'silencioHasta', 'silencioActivo', 'limiteDiario', 'pausadoHasta', 'moneda', 'horaResumen'])
+            && (!('zona' in g) || textoMax(g.zona, 64))
+            && (!('silencioDesde' in g) || (g.silencioDesde is int && g.silencioDesde >= 0 && g.silencioDesde <= 23))
+            && (!('silencioHasta' in g) || (g.silencioHasta is int && g.silencioHasta >= 0 && g.silencioHasta <= 23))
+            && (!('silencioActivo' in g) || g.silencioActivo is bool)
+            && (!('limiteDiario' in g) || (g.limiteDiario is int && g.limiteDiario >= 1 && g.limiteDiario <= 100))
+            && (!('pausadoHasta' in g) || (esNumero(g.pausadoHasta) && g.pausadoHasta >= 0))
+            && (!('moneda' in g) || esMoneda(g.moneda))
+            && (!('horaResumen' in g) || (g.horaResumen is int && g.horaResumen >= 0 && g.horaResumen <= 23));
+        }
         function avisosValidos(d) {
-          return d.keys().hasOnly(['ajustes', 'tokens', 'enviados', 'resumen'])
-            && d.ajustes is map && d.ajustes.keys().size() <= 30
+          return d.keys().hasOnly(['ajustes', 'tokens', 'resumen', 'general', 'alertas', 'seguidas', 'telegram', 'historialLeidoHasta'])
+            && d.ajustes is map && d.ajustes.keys().size() <= 60
             && (!('tokens' in d) || (d.tokens is list && d.tokens.size() <= 10))
-            && (!('enviados' in d) || d.enviados is map)
-            && (!('resumen' in d) || d.resumen is map);
+            && (!('resumen' in d) || d.resumen is map)
+            && (!('general' in d) || generalValido(d.general))
+            && (!('alertas' in d) || (d.alertas is list && d.alertas.size() <= 20))
+            && (!('seguidas' in d) || (d.seguidas is list && d.seguidas.size() <= 30))
+            && (!('telegram' in d) || (d.telegram is map && d.telegram.keys().hasOnly(['desconectar'])))
+            && (!('historialLeidoHasta' in d) || d.historialLeidoHasta is timestamp);
         }
         allow read, delete: if isOwner(userId);
-        // `enviados` solo lo escribe el job (Admin SDK); el cliente no puede tocarlo.
-        allow create, update: if isOwner(userId) && avisosValidos(request.resource.data)
-          && request.resource.data.get('enviados', null) == (resource == null ? null : resource.data.get('enviados', null));
+        allow create, update: if isOwner(userId) && avisosValidos(request.resource.data);
       }
+
+      // Estado interno del job (lo ya avisado, Telegram vinculado…): el dueño lo lee y puede borrarlo, solo el backend lo escribe.
+      match /avisos/estado {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if false;
+      }
+
+      // Aviso de prueba: el cliente deja una marca de tiempo (máximo una cada 5 minutos) y el job lo envía.
+      match /avisos/prueba {
+        function tsValido(d) { return d.keys().hasOnly(['ts']) && d.ts == request.time; }
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && tsValido(request.resource.data);
+        allow update: if isOwner(userId) && tsValido(request.resource.data)
+                      && request.time > resource.data.ts + duration.value(5, 'm');
+      }
+
+      // Historial de avisos (30 días): solo lo escribe el job. El dueño lo lee y puede borrarlo (borrado de cuenta).
+      match /historial/{id} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if false;
+      }
+
+      // Dispositivos desde los que ha iniciado sesión (sin IP ni huella).
+      match /dispositivos/{id} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['creado', 'navegador', 'procesado'])
+          && request.resource.data.creado == request.time
+          && textoMax(request.resource.data.navegador, 40)
+          && request.resource.data.procesado is bool;
+        allow update: if false;
+      }
+    }
+
+    // Códigos de vinculación con Telegram: un solo uso, 15 minutos. Solo se puede crear el propio.
+    match /vinculos/{codigo} {
+      allow create: if verified()
+        && codigo.matches('^[A-Z0-9]{8,16}$')
+        && request.resource.data.keys().hasOnly(['uid', 'expira'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.expira is timestamp
+        && request.resource.data.expira > request.time
+        && request.resource.data.expira <= request.time + duration.value(15, 'm');
+      allow delete: if verified() && resource.data.uid == request.auth.uid;
+      allow read, update: if false;
     }
 
     // Cualquier otra ruta, denegada.

@@ -11,7 +11,11 @@ const getDoc = (r: ReturnType<typeof doc>) => r.get()
 const setDoc = (r: ReturnType<typeof doc>, d: Record<string, unknown>) => r.set(d)
 const updateDoc = (r: ReturnType<typeof doc>, d: Record<string, unknown>) => r.update(d)
 const deleteDoc = (r: ReturnType<typeof doc>) => r.delete()
-const serverTimestamp = () => new Date()
+const req = createRequire(import.meta.url)
+const compat = req('firebase/compat/app')
+req('firebase/compat/firestore')
+// Marca de tiempo REAL del servidor (hace falta para las reglas con `== request.time`).
+const serverTimestamp = () => (compat.default ?? compat).firestore.FieldValue.serverTimestamp()
 const Timestamp = { now: () => new Date(), fromDate: (d: Date) => d }
 
 let env: RulesTestEnvironment
@@ -135,9 +139,10 @@ describe('perfil, plan y avisos', () => {
     const plan = { capital: 1000, nivelesClave: [], dca: { porcentajeSemanal: 1, semanas: 25 } }
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/plan/config'), plan))
   })
-  it('avisos: el cliente no puede escribir "enviados"', async () => {
+  it('avisos: config válida y sin campos de más', async () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: { nivel: { activo: true } }, tokens: ['t1'] }))
     await assertFails(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, enviados: { nivel: 1 } }))
+    await assertFails(setDoc(doc(beto(), 'users/ana/avisos/config'), { ajustes: {} }))
   })
   it('avisos: el cliente puede guardar su resumen para el job', async () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, resumen: { precioMedio: 50000, btc: 0.1 } }))
@@ -145,5 +150,75 @@ describe('perfil, plan y avisos', () => {
   it('borrar la cuenta: el dueño borra sus documentos', async () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil()))
     await assertSucceeds(deleteDoc(doc(ana(), 'users/ana')))
+  })
+})
+
+describe('avisos: ajustes generales, alertas y Telegram', () => {
+  const cfg = (extra: Record<string, unknown>) => setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, ...extra })
+  it('ajustes generales con rangos', async () => {
+    await assertSucceeds(cfg({ general: { zona: 'Europe/Madrid', silencioActivo: true, silencioDesde: 22, silencioHasta: 8, limiteDiario: 10, pausadoHasta: 0, moneda: 'USD', horaResumen: 9 } }))
+    await assertFails(cfg({ general: { silencioDesde: 24 } }))
+    await assertFails(cfg({ general: { limiteDiario: 0 } }))
+    await assertFails(cfg({ general: { limiteDiario: 101 } }))
+    await assertFails(cfg({ general: { moneda: 'GBP' } }))
+    await assertFails(cfg({ general: { admin: true } }))
+  })
+  it('máximo 20 alertas y 30 carteras seguidas', async () => {
+    const alerta = (i: number) => ({ id: `a${i}`, dir: 'abajo', precio: 40000, moneda: 'EUR', repetir: false })
+    await assertSucceeds(cfg({ alertas: Array.from({ length: 20 }, (_, i) => alerta(i)) }))
+    await assertFails(cfg({ alertas: Array.from({ length: 21 }, (_, i) => alerta(i)) }))
+    await assertSucceeds(cfg({ seguidas: Array.from({ length: 30 }, (_, i) => `c${i}`) }))
+    await assertFails(cfg({ seguidas: Array.from({ length: 31 }, (_, i) => `c${i}`) }))
+  })
+  it('Telegram: el cliente solo puede pedir la desconexión, nunca fijar el chat', async () => {
+    await assertSucceeds(cfg({ telegram: { desconectar: true } }))
+    await assertFails(cfg({ telegram: { chatId: 123 } }))
+  })
+  it('estado e historial: el dueño lee y borra, nadie escribe', async () => {
+    await env.withSecurityRulesDisabled(async (c) => {
+      await setDoc(doc(c.firestore() as never, 'users/ana/avisos/estado'), { telegramChatId: 1 })
+      await setDoc(doc(c.firestore() as never, 'users/ana/historial/h1'), { titulo: 'x' })
+    })
+    await assertSucceeds(getDoc(doc(ana(), 'users/ana/avisos/estado')))
+    await assertSucceeds(getDoc(doc(ana(), 'users/ana/historial/h1')))
+    await assertFails(getDoc(doc(beto(), 'users/ana/historial/h1')))
+    await assertFails(setDoc(doc(ana(), 'users/ana/avisos/estado'), { telegramChatId: 999 }))
+    await assertFails(setDoc(doc(ana(), 'users/ana/historial/h2'), { titulo: 'inventado' }))
+    await assertFails(updateDoc(doc(ana(), 'users/ana/historial/h1'), { titulo: 'otro' }))
+    await assertSucceeds(deleteDoc(doc(ana(), 'users/ana/historial/h1')))
+    await assertSucceeds(deleteDoc(doc(ana(), 'users/ana/avisos/estado')))
+  })
+  it('aviso de prueba: una marca de tiempo, y no más de una cada 5 minutos', async () => {
+    const ref = doc(ana(), 'users/ana/avisos/prueba')
+    await assertSucceeds(setDoc(ref, { ts: serverTimestamp() }))
+    await assertFails(setDoc(ref, { ts: serverTimestamp() })) // demasiado pronto
+    await assertFails(setDoc(doc(ana(), 'users/ana/avisos/prueba'), { ts: new Date('2020-01-01') }))
+    await assertFails(setDoc(doc(beto(), 'users/ana/avisos/prueba'), { ts: serverTimestamp() }))
+    await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore() as never, 'users/ana/avisos/prueba'), { ts: new Date(Date.now() - 10 * 60 * 1000) }))
+    await assertSucceeds(setDoc(ref, { ts: serverTimestamp() })) // ya pasaron más de 5 minutos
+  })
+  it('dispositivos: crea el dueño, sin campos de más, sin tocar el de otro', async () => {
+    const d = (extra: Record<string, unknown> = {}) => ({ creado: serverTimestamp(), navegador: 'Safari en iPhone', procesado: false, ...extra })
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana/dispositivos/d1'), d()))
+    await assertFails(setDoc(doc(ana(), 'users/ana/dispositivos/d2'), d({ ip: '1.2.3.4' })))
+    await assertFails(setDoc(doc(ana(), 'users/ana/dispositivos/d3'), d({ navegador: 'x'.repeat(41) })))
+    await assertFails(setDoc(doc(beto(), 'users/ana/dispositivos/d4'), d()))
+    await assertFails(updateDoc(doc(ana(), 'users/ana/dispositivos/d1'), { procesado: true }))
+  })
+  it('vínculos de Telegram: solo el propio, código bien formado y 15 minutos máximo', async () => {
+    const v = (uid: string, min: number) => ({ uid, expira: new Date(Date.now() + min * 60 * 1000) })
+    await assertSucceeds(setDoc(doc(ana(), 'vinculos/ABCD1234EF'), v('ana', 14)))
+    await assertFails(setDoc(doc(ana(), 'vinculos/ABCD1234EG'), v('beto', 14))) // de otra persona
+    await assertFails(setDoc(doc(ana(), 'vinculos/ABCD1234EH'), v('ana', 60))) // caduca tarde
+    await assertFails(setDoc(doc(ana(), 'vinculos/abc'), v('ana', 10))) // código mal formado
+    await assertFails(getDoc(doc(ana(), 'vinculos/ABCD1234EF'))) // no se lee
+    await assertFails(deleteDoc(doc(beto(), 'vinculos/ABCD1234EF')))
+    await assertSucceeds(deleteDoc(doc(ana(), 'vinculos/ABCD1234EF')))
+  })
+  it('plan: precio de arranque del DCA opcional y validado', async () => {
+    const plan = (dca: Record<string, unknown>) => ({ capital: 1000, nivelesClave: [], dca: { porcentajeSemanal: 1, semanas: 25, ...dca } })
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ precioInicio: 72000, monedaInicio: 'USD' })))
+    await assertFails(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ precioInicio: -1 })))
+    await assertFails(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ monedaInicio: 'GBP' })))
   })
 })
