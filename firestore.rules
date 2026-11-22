@@ -10,6 +10,7 @@ service cloud.firestore {
 
     function esMoneda(v) { return v in ['EUR', 'USD', 'AUD']; }
     function esNumero(v) { return v is number; }
+    function horaValida(h) { return h is string && h.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'); }
     function textoMax(v, n) { return v is string && v.size() <= n; }
     function fechaValida(f) {
       return f is string
@@ -43,7 +44,7 @@ service cloud.firestore {
 
       match /operaciones/{opId} {
         function opValida(d) {
-          return d.keys().hasOnly(['tipo', 'fecha', 'cantidad', 'comision', 'precio', 'moneda', 'plataforma', 'nota', 'creado', 'editado'])
+          return d.keys().hasOnly(['tipo', 'fecha', 'cantidad', 'comision', 'precio', 'moneda', 'plataforma', 'nota', 'hora', 'creado', 'editado'])
             && d.keys().hasAll(['tipo', 'fecha', 'cantidad', 'comision', 'precio', 'moneda', 'creado'])
             && d.tipo in ['compra', 'venta']
             && fechaValida(d.fecha)
@@ -53,6 +54,7 @@ service cloud.firestore {
             && esMoneda(d.moneda)
             && (!('plataforma' in d) || textoMax(d.plataforma, 40))
             && (!('nota' in d) || textoMax(d.nota, 200))
+            && (!('hora' in d) || horaValida(d.hora))
             && d.creado is timestamp
             && (!('editado' in d) || d.editado is timestamp);
         }
@@ -65,7 +67,7 @@ service cloud.firestore {
       match /trades/{tradeId} {
         function precioOk(p) { return esNumero(p) && p > 0 && p < 100000000; }
         function tradeValido(d) {
-          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota', 'creado', 'editado'])
+          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota', 'horaInicio', 'horaCierre', 'creado', 'editado'])
             && d.keys().hasAll(['estado', 'direccion', 'fechaInicio', 'precioEntrada', 'moneda', 'apalancamiento', 'creado'])
             && d.estado in ['abierto', 'cerrado']
             && d.direccion in ['largo', 'corto']
@@ -81,6 +83,9 @@ service cloud.firestore {
             && (!('btcGanadoManual' in d) || (esNumero(d.btcGanadoManual) && d.btcGanadoManual > -21000000 && d.btcGanadoManual < 21000000))
             && (!('plataforma' in d) || textoMax(d.plataforma, 40))
             && (!('nota' in d) || textoMax(d.nota, 200))
+            && (!('horaInicio' in d) || horaValida(d.horaInicio))
+            && (!('horaCierre' in d) || horaValida(d.horaCierre))
+            && (!('horaInicio' in d && 'horaCierre' in d && 'fechaCierre' in d) || d.fechaCierre != d.fechaInicio || d.horaCierre >= d.horaInicio)
             && d.creado is timestamp
             && (!('editado' in d) || d.editado is timestamp);
         }

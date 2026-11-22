@@ -36,6 +36,8 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
     btcManual: inicial?.btcGanadoManual != null ? String(inicial.btcGanadoManual) : '',
     plataforma: inicial ? (inicial.plataforma ?? '') : ultimaPlataforma(),
     nota: inicial?.nota ?? '',
+    horaInicio: inicial?.horaInicio ?? '',
+    horaCierre: inicial?.horaCierre ?? '',
   })
   const [otroLev, setOtroLev] = useState(Boolean(inicial) && !PILDORAS.includes(inicial?.apalancamiento ?? 1))
   const [error, setError] = useState('')
@@ -51,6 +53,7 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
       ...(Number.isFinite(aNum(f.comisiones)) ? { comisiones: aNum(f.comisiones) } : {}),
       ...(f.manual && Number.isFinite(aNum(f.btcManual)) ? { btcGanadoManual: aNum(f.btcManual) } : {}),
       ...(f.plataforma.trim() ? { plataforma: f.plataforma } : {}), ...(f.nota.trim() ? { nota: f.nota } : {}),
+      ...(f.horaInicio ? { horaInicio: f.horaInicio } : {}), ...(cerrado && f.horaCierre ? { horaCierre: f.horaCierre } : {}),
     })
     return r
   }, [f, cerrado])
@@ -100,7 +103,9 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
 
         <div className="grid2">
           <label>Fecha de inicio<input type="date" value={f.fechaInicio} max={hoyISO()} onChange={set('fechaInicio')} required /></label>
+          <label>Hora de inicio (opcional)<input type="time" value={f.horaInicio} onChange={set('horaInicio')} /></label>
           {cerrado && <label>Fecha de cierre<input type="date" value={f.fechaCierre} min={f.fechaInicio} max={hoyISO()} onChange={set('fechaCierre')} required /></label>}
+          {cerrado && <label>Hora de cierre (opcional)<input type="time" value={f.horaCierre} onChange={set('horaCierre')} /></label>}
           <label>Moneda
             <select value={f.moneda} onChange={set('moneda')}>{MONEDAS.map((m) => <option key={m}>{m}</option>)}</select>
           </label>

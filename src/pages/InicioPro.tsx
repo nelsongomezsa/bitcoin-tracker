@@ -12,7 +12,7 @@ import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
 import { btcDeCompra, btcDeVenta, calcularFifo, estadoNiveles, filaCompra, ordenarPorFecha, progresoDca, type Operacion } from '../lib/calculos'
 import { filasTrades } from '../lib/trading'
-import { btc as fBtc, btcConSigno, claseSigno, dinero, fechaCorta, flecha, hoyISO, OCULTO } from '../lib/format'
+import { btc as fBtc, btcConSigno, claseSigno, dinero, fechaConHora, fechaCorta, flecha, hoyISO, OCULTO } from '../lib/format'
 import type { Temporalidad } from '../lib/velas'
 
 // Las velas se cargan aparte y solo cuando hacen falta: el resumen se pinta antes.
@@ -112,7 +112,7 @@ export default function InicioPro() {
                   const pn = esCompra ? f!.ganancia : ventas.get(o.id)?.ganancia
                   return (
                     <tr key={o.id} onClick={() => setHoja({ tipo: o.tipo, op: v.operaciones.find((x) => x.id === o.id) })} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setHoja({ tipo: o.tipo, op: v.operaciones.find((x) => x.id === o.id) }) }} aria-label={`${esCompra ? 'Compra' : 'Venta'} del ${fechaCorta(o.fecha)}, editar`}>
-                      <td><b className={esCompra ? 'pro-compra' : 'pro-venta'}>{esCompra ? '▲ Compra' : '▼ Venta'}</b><div className="pro-et num">{fechaCorta(o.fecha)}</div>{o.plataforma && <div className="pro-et">{o.plataforma}</div>}</td>
+                      <td><b className={esCompra ? 'pro-compra' : 'pro-venta'}>{esCompra ? '▲ Compra' : '▼ Venta'}</b><div className="pro-et num">{fechaConHora(o.fecha, o.hora)}</div>{o.plataforma && <div className="pro-et">{o.plataforma}</div>}</td>
                       <td className="r num">{dinero(o.precio, moneda, 0)}<div className="pro-et">{fBtc(esCompra ? btcDeCompra(o) : btcDeVenta(o))}</div></td>
                       <td className="r num">{v.$(o.cantidad)}<div className={`${pn == null ? 'pro-et' : claseSigno(pn)}`}>{pn == null ? '—' : `${flecha(pn)} ${v.$s(pn)}`}</div></td>
                     </tr>
@@ -133,7 +133,7 @@ export default function InicioPro() {
               <tbody>
                 {trades.map((f) => (
                   <tr key={f.trade.id}>
-                    <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaCorta(f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaCorta(f.trade.fechaCierre!)}`}</div></td>
+                    <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
                     <td className="r num">{dinero(f.trade.precioEntrada, f.trade.moneda, 0)}<div className="pro-et">{dinero(f.calculo.precioReferencia, f.trade.moneda, 0)}{f.calculo.abierto ? ' (hoy)' : ''}</div></td>
                     <td className={`r num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}<div>{f.calculo.btc == null ? '—' : oculto(btcConSigno(f.calculo.btc))}</div></td>
                   </tr>

@@ -300,3 +300,27 @@ describe('estadísticas ampliadas', () => {
     expect(altas.map((f) => f.id)).toEqual(['c5']) // 2 / 40 = 5 %
   })
 })
+
+import { operacionSchema } from '../schemas'
+import { fechaConHora } from '../format'
+describe('hora opcional de las operaciones', () => {
+  const base = { tipo: 'compra', fecha: '2025-03-01', cantidad: 100, comision: 1, precio: 50000, moneda: 'EUR' }
+  it('acepta HH:MM, la cadena vacía (= sin hora) y la ausencia', () => {
+    expect(operacionSchema.parse({ ...base, hora: '09:05' }).hora).toBe('09:05')
+    expect(operacionSchema.parse({ ...base, hora: '23:59' }).hora).toBe('23:59')
+    expect(operacionSchema.parse({ ...base, hora: '' }).hora).toBeUndefined()
+    expect(operacionSchema.parse(base).hora).toBeUndefined()
+  })
+  it('rechaza horas imposibles o mal escritas', () => {
+    for (const h of ['24:00', '9:05', '12:60', '12-30', 'mediodía', '12:30:15', ' 12:30']) expect(operacionSchema.safeParse({ ...base, hora: h }).success, h).toBe(false)
+  })
+  it('la hora no cambia ningún cálculo: el resumen es idéntico con y sin ella', () => {
+    const ops = [{ id: '1', tipo: 'compra' as const, fecha: '2025-03-01', cantidad: 100, comision: 1, precio: 50000, moneda: 'EUR' as const }]
+    expect(resumen(ops.map((o) => ({ ...o, hora: '10:00' })), 60000)).toEqual(resumen(ops, 60000))
+  })
+  it('se muestra con la fecha solo si existe', () => {
+    expect(fechaConHora('2025-03-01', '09:05')).toBe('01/03/2025 09:05')
+    expect(fechaConHora('2025-03-01')).toBe('01/03/2025')
+    expect(fechaConHora('2025-03-01', '')).toBe('01/03/2025')
+  })
+})

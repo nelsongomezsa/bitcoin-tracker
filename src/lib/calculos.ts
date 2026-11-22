@@ -17,6 +17,8 @@ export interface Operacion {
   moneda: Moneda
   plataforma?: string
   nota?: string
+  /** Hora opcional (HH:MM, 24 h). Sin ella solo cuenta la fecha. */
+  hora?: string
 }
 
 export type PreciosBtc = Record<Moneda, number>

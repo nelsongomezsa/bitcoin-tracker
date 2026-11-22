@@ -323,3 +323,35 @@ describe('vista simple o pro', () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil())) // los perfiles antiguos, sin el campo, siguen valiendo
   })
 })
+
+describe('hora opcional en operaciones y trades', () => {
+  let n = 0 // un documento nuevo en cada intento: repetir el id sería una edición, y las ediciones no pueden cambiar «creado»
+  const crearOp = (extra: Record<string, unknown>) => setDoc(doc(ana(), `users/ana/operaciones/h${n++}`), op(extra))
+  const tr = (extra: Record<string, unknown> = {}) => ({ estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-03-01', fechaCierre: '2025-03-04', precioEntrada: 80000, precioSalida: 82520, moneda: 'USD', apalancamiento: 5, creado: serverTimestamp(), ...extra })
+  const crearTr = (extra: Record<string, unknown>) => setDoc(doc(ana(), `users/ana/trades/h${n++}`), tr(extra))
+  it('operaciones: HH:MM válida sí; sin hora sí; mal formada o de otro tipo no', async () => {
+    await assertSucceeds(crearOp({ hora: '09:05' }))
+    await assertSucceeds(crearOp({ hora: '23:59' }))
+    await assertSucceeds(crearOp({}))
+    for (const h of ['24:00', '9:05', '12:60', '12:30:15', 'tarde', 930, true]) await assertFails(crearOp({ hora: h }))
+  })
+  it('operaciones: se puede añadir o cambiar la hora al editar', async () => {
+    await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore(), 'users/ana/operaciones/o1'), op()))
+    await assertSucceeds(updateDoc(doc(ana(), 'users/ana/operaciones/o1'), { hora: '10:30', editado: serverTimestamp() }))
+    await assertFails(updateDoc(doc(ana(), 'users/ana/operaciones/o1'), { hora: '99:99', editado: serverTimestamp() }))
+  })
+  it('trades: horaInicio y horaCierre válidas sí; mal formadas no', async () => {
+    await assertSucceeds(crearTr({ horaInicio: '10:05', horaCierre: '16:40' }))
+    await assertSucceeds(crearTr({ horaInicio: '10:05' }))
+    for (const h of ['25:00', '9:30', 'x']) { await assertFails(crearTr({ horaInicio: h })); await assertFails(crearTr({ horaCierre: h })) }
+    await assertFails(crearTr({ horaInicio: 1005 }))
+  })
+  it('trades: el mismo día, el cierre no puede ser anterior al inicio', async () => {
+    await assertFails(crearTr({ fechaCierre: '2025-03-01', horaInicio: '15:00', horaCierre: '14:59' }))
+    await assertSucceeds(crearTr({ fechaCierre: '2025-03-01', horaInicio: '15:00', horaCierre: '15:00' }))
+    await assertSucceeds(crearTr({ fechaCierre: '2025-03-02', horaInicio: '15:00', horaCierre: '09:00' })) // otro día: vale
+  })
+  it('otro usuario no puede escribir horas en lo de Ana', async () => {
+    await assertFails(setDoc(doc(beto(), 'users/ana/operaciones/o9'), op({ hora: '10:00' })))
+  })
+})

@@ -30,7 +30,7 @@ export function operacionesDemo(hoy = Date.now()): Operacion[] {
   }
   return [
     compra(1, 300, 800), compra(2, 260, 250), compra(3, 220, 500), compra(4, 190, 150), compra(5, 150, 400),
-    compra(6, 110, 300), compra(7, 80, 600), compra(8, 50, 100), compra(9, 28, 250), compra(10, 9, 200),
+    compra(6, 110, 300), compra(7, 80, 600), compra(8, 50, 100), { ...compra(9, 28, 250), hora: '09:15' }, { ...compra(10, 9, 200), hora: '18:42' },
   ]
 }
 
@@ -51,6 +51,7 @@ export function tradesDemo(hoy = Date.now()): Trade[] {
     return {
       id: `demo-t${i + 1}`, estado: 'cerrado', direccion: dir, fechaInicio: iso(hoy - ini * DIA), fechaCierre: iso(hoy - (ini - dur) * DIA),
       precioEntrada: entrada, precioSalida: salida, moneda: 'USD', apalancamiento: lev, margenBTC: margen, comisiones: com, plataforma: 'Exchange demo',
+      ...(i >= 11 ? { horaInicio: '10:05', horaCierre: '16:40' } : {}),
     }
   })
   const abiertos: Trade[] = [

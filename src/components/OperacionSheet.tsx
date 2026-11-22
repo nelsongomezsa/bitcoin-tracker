@@ -34,6 +34,7 @@ export default function OperacionSheet({ tipo: tipoInicial, inicial, plantilla, 
     moneda: (inicial?.moneda ?? v.moneda) as Moneda,
     plataforma: plataformaInicial,
     nota: inicial?.nota ?? '',
+    hora: inicial?.hora ?? '',
   })
   const [modoCom, setModoCom] = useState<'eur' | 'pct'>('eur')
   const [otra, setOtra] = useState(Boolean(plataformaInicial) && !(PLATAFORMAS as readonly string[]).includes(plataformaInicial))
@@ -93,7 +94,7 @@ export default function OperacionSheet({ tipo: tipoInicial, inicial, plantilla, 
     setError('')
     const r = operacionSchema.safeParse({
       tipo, fecha: f.fecha, cantidad, comision, precio, moneda: f.moneda,
-      plataforma: f.plataforma || undefined, nota: f.nota || undefined,
+      plataforma: f.plataforma || undefined, nota: f.nota || undefined, hora: f.hora || undefined,
     })
     if (!r.success) return setError(r.error.issues[0].message)
     if (preview?.excede) return setError('No puedes vender más BTC del que tienes.')
@@ -128,6 +129,7 @@ export default function OperacionSheet({ tipo: tipoInicial, inicial, plantilla, 
             <input inputMode="decimal" value={f.cantidad} onChange={set('cantidad')} placeholder="0,00" required />
           </label>
           <label>Fecha<input type="date" value={f.fecha} max={hoyISO()} onChange={set('fecha')} required /></label>
+          <label>Hora (opcional)<input type="time" value={f.hora} onChange={set('hora')} /></label>
           <label>
             <span className="row between">
               <span>Comisión ({modoCom === 'eur' ? simbolo : '%'})</span>

@@ -22,6 +22,9 @@ export interface Trade {
   btcGanadoManual?: number
   plataforma?: string
   nota?: string
+  /** Horas opcionales (HH:MM, 24 h) de la entrada y de la salida. */
+  horaInicio?: string
+  horaCierre?: string
 }
 
 export type TradeGuardable = Omit<Trade, 'id'>

@@ -6,6 +6,9 @@ export const MONEDAS = ['EUR', 'USD', 'AUD'] as const
 export const monedaSchema = z.enum(MONEDAS)
 
 // Las mismas reglas que firestore.rules (que son las que mandan en el servidor).
+/** Hora opcional HH:MM (24 h). Una cadena vacía cuenta como «sin hora». */
+export const horaOpcionalSchema = z.preprocess((v) => (v === '' ? undefined : v), z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Hora no válida (HH:MM)').optional())
+
 export const operacionSchema = z
   .object({
     tipo: z.enum(['compra', 'venta']),
@@ -19,6 +22,7 @@ export const operacionSchema = z
     moneda: monedaSchema,
     plataforma: z.string().trim().max(40, 'Máximo 40 caracteres').regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
     nota: z.string().trim().max(200, 'Máximo 200 caracteres').optional(),
+    hora: horaOpcionalSchema,
   })
   .refine((o) => o.comision < o.cantidad, { path: ['comision'], message: 'La comisión debe ser menor que la cantidad' })
 
@@ -99,8 +103,11 @@ export const tradeSchema = z
     btcGanadoManual: z.number({ message: 'Introduce un número' }).gt(-21_000_000).lt(21_000_000).optional(),
     plataforma: textoCorto(40).regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
     nota: textoCorto(200).optional(),
+    horaInicio: horaOpcionalSchema,
+    horaCierre: horaOpcionalSchema,
   })
   .refine((t) => t.estado === 'abierto' || (t.fechaCierre != null && t.precioSalida != null), { path: ['precioSalida'], message: 'Un trade cerrado necesita fecha y precio de salida' })
+  .refine((t) => !(t.fechaCierre === t.fechaInicio && t.horaInicio && t.horaCierre) || t.horaCierre >= t.horaInicio, { path: ['horaCierre'], message: 'La hora de cierre no puede ser anterior a la de inicio' })
   .refine((t) => t.fechaCierre == null || t.fechaCierre >= t.fechaInicio, { path: ['fechaCierre'], message: 'El cierre no puede ser anterior al inicio' })
 
 export type TradeInput = z.infer<typeof tradeSchema>

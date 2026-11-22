@@ -9,7 +9,7 @@ import TradeSheet from '../components/TradeSheet'
 import TradeFicha from '../components/TradeFicha'
 import TradingGraficas from '../components/TradingGraficas'
 import { filasTrades, type FilaTrade, type Trade } from '../lib/trading'
-import { claseSigno, fechaCorta, flecha, hoyISO, dinero, OCULTO } from '../lib/format'
+import { claseSigno, fechaConHora, fechaCorta, flecha, hoyISO, dinero, OCULTO } from '../lib/format'
 import { mensajeError } from '../lib/errores'
 import { MONEDAS } from '../lib/schemas'
 import { descargarTradesCsv, descargarTradesXlsx } from '../lib/exportar'
@@ -128,7 +128,7 @@ export default function Trading() {
                 <tbody>
                   {lista.map((f) => (
                     <tr key={f.trade.id} tabIndex={0} onClick={() => setFicha(f)} onKeyDown={(e) => { if (e.key === 'Enter') setFicha(f) }} aria-label={`Trade ${f.trade.direccion} x${f.trade.apalancamiento} del ${fechaCorta(f.trade.fechaInicio)}`}>
-                      <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaCorta(f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaCorta(f.trade.fechaCierre!)}`}</div></td>
+                      <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
                       <td className="r num">{dinero(f.trade.precioEntrada, f.trade.moneda, 0)}<div className="pro-et">{dinero(f.calculo.precioReferencia, f.trade.moneda, 0)}{f.calculo.abierto ? ' (hoy)' : ''}</div></td>
                       <td className={`r num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}<div>{f.calculo.btc == null ? '—' : v.btcS(f.calculo.btc)}</div></td>
                     </tr>

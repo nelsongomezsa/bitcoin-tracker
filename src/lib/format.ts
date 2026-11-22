@@ -29,3 +29,6 @@ export function horaCorta(d: Date): string {
 }
 /** BTC con signo explícito (+0,0089 BTC / −0,002 BTC). */
 export const btcConSigno = (n: number) => `${n > 0 && Math.abs(n) >= 5e-9 ? '+' : n < 0 && Math.abs(n) >= 5e-9 ? '−' : ''}${nf(0, 8).format(Math.abs(n))} BTC`
+
+/** «23/11/2026 14:30» si hay hora; si no, solo la fecha. */
+export const fechaConHora = (iso: string, hora?: string) => (hora ? `${fechaCorta(iso)} ${hora}` : fechaCorta(iso))

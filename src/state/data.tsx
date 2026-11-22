@@ -73,7 +73,7 @@ function DemoProvider({ children }: { children: ReactNode }) {
 
 // ───────────── Firestore ─────────────
 const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
-const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota']
+const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota', 'horaInicio', 'horaCierre']
 const limpiar = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T
 
 function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: string; children: ReactNode }) {
@@ -112,7 +112,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
             const x = d.data()
             return {
               id: d.id, tipo: x.tipo, fecha: x.fecha, cantidad: num(x.cantidad), comision: num(x.comision), precio: num(x.precio),
-              moneda: x.moneda, plataforma: x.plataforma, nota: x.nota,
+              moneda: x.moneda, plataforma: x.plataforma, nota: x.nota, ...(typeof x.hora === 'string' ? { hora: x.hora } : {}),
             } as Operacion
           }),
         )
@@ -128,6 +128,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
               apalancamiento: num(x.apalancamiento, 1), ...(typeof x.fechaCierre === 'string' ? { fechaCierre: x.fechaCierre } : {}),
               ...opc('precioSalida'), ...opc('margenBTC'), ...opc('comisiones'), ...opc('btcGanadoManual'),
               ...(typeof x.plataforma === 'string' ? { plataforma: x.plataforma } : {}), ...(typeof x.nota === 'string' ? { nota: x.nota } : {}),
+              ...(typeof x.horaInicio === 'string' ? { horaInicio: x.horaInicio } : {}), ...(typeof x.horaCierre === 'string' ? { horaCierre: x.horaCierre } : {}),
             } as Trade
           }),
         )
@@ -173,7 +174,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
     guardarOperacion: async (o: OperacionGuardable, id) => {
       if (!db) return
       const v = limpiar(operacionSchema.parse(o))
-      if (id) await updateDoc(doc(db, `users/${uid}/operaciones/${id}`), { ...v, editado: serverTimestamp() })
+      if (id) await updateDoc(doc(db, `users/${uid}/operaciones/${id}`), { ...v, ...(v.hora ? {} : { hora: deleteField() }), editado: serverTimestamp() })
       else await addDoc(collection(db, `users/${uid}/operaciones`), { ...v, creado: serverTimestamp() })
     },
     borrarOperacion: async (id) => {

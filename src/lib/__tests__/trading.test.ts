@@ -115,9 +115,13 @@ describe('esquema Zod', () => {
   })
   it('rechaza lo que las reglas rechazan', () => {
     for (const mal of [
+      { horaInicio: '25:00' }, { horaCierre: '9:30' }, { fechaCierre: '2025-03-01', horaInicio: '15:00', horaCierre: '14:59' },
       { apalancamiento: 126 }, { apalancamiento: 0 }, { precioEntrada: 0 }, { precioSalida: undefined }, { fechaCierre: '2025-02-01' }, { fechaInicio: '2999-01-01' },
       { margenBTC: 0 }, { comisiones: 101 }, { direccion: 'neutral' }, { nota: 'x'.repeat(201) }, { plataforma: '<b>' },
     ]) expect(tradeSchema.safeParse({ ...ok, ...mal }).success, JSON.stringify(mal)).toBe(false)
+    expect(tradeSchema.safeParse({ ...ok, horaInicio: '10:00', horaCierre: '12:30' }).success).toBe(true)
+    expect(tradeSchema.safeParse({ ...ok, fechaCierre: '2025-03-01', horaInicio: '10:00', horaCierre: '10:00' }).success).toBe(true)
+    expect(tradeSchema.safeParse({ ...ok, horaInicio: '', horaCierre: '' }).success).toBe(true)
     expect(tradeSchema.safeParse({ estado: 'abierto', direccion: 'corto', fechaInicio: '2025-03-01', precioEntrada: 1 }).success).toBe(true)
   })
 })

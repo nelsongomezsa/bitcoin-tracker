@@ -3,7 +3,7 @@ import type { Operacion } from './calculos'
 import type { Trade } from './trading'
 import { calcularTrade } from './trading'
 
-const CAB = ['Fecha', 'Tipo', 'Cantidad', 'Comisión', 'Precio', 'Moneda', 'Plataforma', 'Nota']
+const CAB = ['Fecha', 'Tipo', 'Cantidad', 'Comisión', 'Precio', 'Moneda', 'Plataforma', 'Nota', 'Hora']
 
 /** Evita la inyección de fórmulas al abrir el archivo en una hoja de cálculo. */
 export const seguroCelda = (s: string) => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s)
@@ -11,7 +11,7 @@ export const seguroCelda = (s: string) => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s)
 const comillas = (s: string) => `"${s.replaceAll('"', '""')}"`
 
 export function aCsv(ops: Operacion[]): string {
-  const filas = ops.map((o) => [o.fecha, o.tipo, o.cantidad, o.comision, o.precio, o.moneda, seguroCelda(o.plataforma ?? ''), seguroCelda(o.nota ?? '')])
+  const filas = ops.map((o) => [o.fecha, o.tipo, o.cantidad, o.comision, o.precio, o.moneda, seguroCelda(o.plataforma ?? ''), seguroCelda(o.nota ?? ''), o.hora ?? ''])
   return '﻿' + [CAB, ...filas].map((f) => f.map((c) => (typeof c === 'number' ? String(c) : comillas(String(c)))).join(',')).join('\r\n')
 }
 
@@ -27,7 +27,7 @@ function descargar(blob: Blob, nombre: string) {
 export const descargarCsv = (ops: Operacion[], nombre = 'operaciones.csv') => descargar(new Blob([aCsv(ops)], { type: 'text/csv;charset=utf-8' }), nombre)
 
 export function descargarXlsx(ops: Operacion[], nombre = 'operaciones.xlsx') {
-  const filas = ops.map((o) => [o.fecha, o.tipo, o.cantidad, o.comision, o.precio, o.moneda, seguroCelda(o.plataforma ?? ''), seguroCelda(o.nota ?? '')])
+  const filas = ops.map((o) => [o.fecha, o.tipo, o.cantidad, o.comision, o.precio, o.moneda, seguroCelda(o.plataforma ?? ''), seguroCelda(o.nota ?? ''), o.hora ?? ''])
   const ws = XLSX.utils.aoa_to_sheet([CAB, ...filas])
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Operaciones')
@@ -42,13 +42,13 @@ export function informeFifoCsv(filas: { fecha: string; btcVendidos: number; ingr
 export const descargarInforme = (csv: string, anio: number) => descargar(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `informe-fifo-${anio}.csv`)
 
 // ───── Trades ─────
-const CAB_TRADES = ['Trade', 'Estado', 'Dirección', 'Fecha inicio', 'Fecha cierre', 'Precio entrada', 'Precio salida', 'Moneda', 'Apalancamiento', 'Margen (BTC)', 'Comisiones (%)', '% ganancia', 'Total ganado (BTC)', 'Plataforma', 'Nota']
+const CAB_TRADES = ['Trade', 'Estado', 'Dirección', 'Fecha inicio', 'Fecha cierre', 'Precio entrada', 'Precio salida', 'Moneda', 'Apalancamiento', 'Margen (BTC)', 'Comisiones (%)', '% ganancia', 'Total ganado (BTC)', 'Plataforma', 'Nota', 'Hora inicio', 'Hora cierre']
 const filasTrades = (ts: Trade[]) =>
   [...ts].sort((a, b) => (a.fechaInicio < b.fechaInicio ? -1 : a.fechaInicio > b.fechaInicio ? 1 : 0)).map((t, i) => {
     const c = t.estado === 'cerrado' ? calcularTrade(t, t.precioSalida ?? t.precioEntrada) : null
     return [
       i + 1, t.estado, t.direccion, t.fechaInicio, t.fechaCierre ?? '', t.precioEntrada, t.precioSalida ?? '', t.moneda, t.apalancamiento, t.margenBTC ?? '', t.comisiones ?? '',
-      c ? Math.round(c.pct * 1e6) / 1e4 : '', c?.btc != null ? c.btc : '', seguroCelda(t.plataforma ?? ''), seguroCelda(t.nota ?? ''),
+      c ? Math.round(c.pct * 1e6) / 1e4 : '', c?.btc != null ? c.btc : '', seguroCelda(t.plataforma ?? ''), seguroCelda(t.nota ?? ''), t.horaInicio ?? '', t.horaCierre ?? '',
     ]
   })
 
