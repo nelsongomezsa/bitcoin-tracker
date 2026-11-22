@@ -259,9 +259,11 @@ describe('trades', () => {
     await assertSucceeds(crear(trade({ btcGanadoManual: -0.002, plataforma: 'Exchange', nota: 'prueba' }), 't2'))
   })
   it('un trade cerrado necesita fecha y precio de salida', async () => {
-    const { precioSalida: _p, ...sinSalida } = trade()
+    const sinSalida: Record<string, unknown> = trade()
+    delete sinSalida.precioSalida
     await assertFails(crear(sinSalida))
-    const { fechaCierre: _f, ...sinCierre } = trade()
+    const sinCierre: Record<string, unknown> = trade()
+    delete sinCierre.fechaCierre
     await assertFails(crear(sinCierre))
   })
   it('otro usuario ni lee ni escribe; sin sesión nada; sin verificar nada', async () => {

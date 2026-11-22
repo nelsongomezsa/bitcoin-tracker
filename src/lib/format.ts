@@ -27,3 +27,5 @@ export const hoyISO = () => {
 export function horaCorta(d: Date): string {
   return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d)
 }
+/** BTC con signo explícito (+0,0089 BTC / −0,002 BTC). */
+export const btcConSigno = (n: number) => `${n > 0 && Math.abs(n) >= 5e-9 ? '+' : n < 0 && Math.abs(n) >= 5e-9 ? '−' : ''}${nf(0, 8).format(Math.abs(n))} BTC`

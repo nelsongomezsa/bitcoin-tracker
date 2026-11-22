@@ -10,6 +10,7 @@ import Operaciones from './pages/Operaciones'
 const Estadisticas = lazy(() => import('./pages/Estadisticas'))
 const Plan = lazy(() => import('./pages/Plan'))
 const Avisos = lazy(() => import('./pages/Avisos'))
+const Trading = lazy(() => import('./pages/Trading'))
 const Mercado = lazy(() => import('./pages/Mercado'))
 const Ajustes = lazy(() => import('./pages/Ajustes'))
 const Calculadoras = lazy(() => import('./pages/Calculadoras'))
@@ -36,6 +37,7 @@ export default function App() {
           <Route index element={<Inicio />} />
           <Route path="operaciones" element={<Operaciones />} />
           <Route path="estadisticas" element={<Estadisticas />} />
+          <Route path="trading" element={<Trading />} />
           <Route path="plan" element={<Plan />} />
           <Route path="avisos" element={<Avisos />} />
           <Route path="mercado" element={<Mercado />} />

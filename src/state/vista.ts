@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useDatos } from './data'
-import { dinero, dineroConSigno, OCULTO, porcentajeConSigno, btc as fmtBtc } from '../lib/format'
+import { dinero, dineroConSigno, OCULTO, porcentajeConSigno, btc as fmtBtc, btcConSigno } from '../lib/format'
 import { normalizar, resumen, type Moneda, type Operacion, type PreciosBtc } from '../lib/calculos'
+import { totalesTrading } from '../lib/trading'
 
 /** Vista derivada: todo expresado en la moneda elegida y respetando el modo privado. */
 export function useVista() {
@@ -25,15 +26,19 @@ export function useVista() {
     }
   }, [ops, precio])
 
+  // Totales de trading en la moneda de la vista (null si aún no hay precio).
+  const trading = useMemo(() => (precios ? totalesTrading(d.trades, precios, moneda) : null), [d.trades, precios, moneda])
+
   const ocultar = (s: string) => (privado ? OCULTO : s)
   return {
     ...d,
-    moneda, setMoneda, precios, precio, ops, res, errorFifo, privado,
+    moneda, setMoneda, precios, precio, ops, res, errorFifo, privado, trading,
     togglePrivado: () => d.guardarPerfil({ ...d.perfil, modoPrivado: !privado }),
     $: (n: number) => ocultar(dinero(n, moneda)),
     $s: (n: number) => ocultar(dineroConSigno(n, moneda)),
     pct: (n: number) => ocultar(porcentajeConSigno(n)),
     btcF: (n: number) => ocultar(fmtBtc(n)),
+    btcS: (n: number) => ocultar(btcConSigno(n)),
   }
 }
 export type Vista = ReturnType<typeof useVista>

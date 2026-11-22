@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 
 /** Mini gráfico del valor en los últimos días: ocupa todo el ancho, en naranja, y la línea se dibuja al entrar. */
-export default function Sparkline({ valores, alto = 56 }: { valores: number[]; alto?: number }) {
+export default function Sparkline({ valores, alto = 56, etiqueta = 'Valor de la cartera en los últimos 7 días' }: { valores: number[]; alto?: number; etiqueta?: string }) {
   const reducir = useReducedMotion()
   const id = useId()
   const caja = useRef<HTMLDivElement>(null)
@@ -25,7 +25,7 @@ export default function Sparkline({ valores, alto = 56 }: { valores: number[]; a
   const area = `M0,${alto} L${pts.map(([x, y]) => `${x},${y}`).join(' L')} L${W},${alto} Z`
   return (
     <div ref={caja} style={{ width: '100%' }}>
-      <svg width={W} height={alto} viewBox={`0 0 ${W} ${alto}`} role="img" aria-label="Valor de la cartera en los últimos 7 días" style={{ display: 'block' }}>
+      <svg width={W} height={alto} viewBox={`0 0 ${W} ${alto}`} role="img" aria-label={etiqueta} style={{ display: 'block' }}>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#F7931A" stopOpacity="0.28" />

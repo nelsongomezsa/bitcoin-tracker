@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, EyeOff, Pencil } from 'lucide-react'
+import { ChartNoAxesCombined, Eye, EyeOff, Pencil } from 'lucide-react'
 import { useVista } from '../state/vista'
 import PrecioChart from '../components/PrecioChart'
 import OperacionSheet from '../components/OperacionSheet'
@@ -11,7 +11,8 @@ import Sparkline from '../components/Sparkline'
 import { InicioEsqueleto } from '../components/Esqueleto'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
-import { claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
+import { btcConSigno, claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
+import { filasTrades } from '../lib/trading'
 import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
 
 const nf = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -30,6 +31,10 @@ export default function Inicio() {
 
   if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
 
+  // Si está activado, los BTC ganados con trades se suman a la cartera (el precio medio de las compras no cambia).
+  const sumaTrading = v.perfil.sumarTradingACartera && v.trading ? v.trading : null
+  const extraValor = sumaTrading ? sumaTrading.netoValor : 0
+  const ultimosTrades = v.perfil.mostrarTrading && precios ? filasTrades(v.trades, precios, moneda).slice(-3).reverse() : []
   const ultimas = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).slice(-5).reverse()
   const nivel = res ? proximoNivel(v.plan, v.operaciones, v.precios?.EUR ?? 0, v.precios ?? undefined) : null
   const nivelEnMoneda = nivel ? nivel.precio * factor : undefined
@@ -58,18 +63,19 @@ export default function Inicio() {
       <section className="card saldo stack" aria-label="Saldo">
         <div className="aura" aria-hidden="true" />
         <h3>Valor actual</h3>
-        <div className="big">{res ? (v.privado ? OCULTO : <Contador valor={`${nf.format(res.valorHoy)} ${moneda === 'EUR' ? '€' : moneda === 'USD' ? '$' : 'A$'}`} />) : '—'}</div>
+        <div className="big">{res ? (v.privado ? OCULTO : <Contador valor={`${nf.format(res.valorHoy + extraValor)} ${moneda === 'EUR' ? '€' : moneda === 'USD' ? '$' : 'A$'}`} />) : '—'}</div>
         <div className="muted num" style={{ fontSize: 13 }}>
           {otras.map((m, i) => (
-            <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir(res?.valorHoy ?? 0, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
+            <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir((res?.valorHoy ?? 0) + extraValor, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
           ))}
         </div>
         {res && !v.privado && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} /></div>}
         {res && (
-          <div className={`mid ${claseSigno(res.ganancia)}`}>
-            {flecha(res.ganancia)} {v.$s(res.ganancia)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.rentabilidad)})</span>
+          <div className={`mid ${claseSigno(res.ganancia + extraValor)}`}>
+            {flecha(res.ganancia + extraValor)} {v.$s(res.ganancia + extraValor)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.invertido > 0 ? (res.ganancia + extraValor) / res.invertido : res.rentabilidad)})</span>
           </div>
         )}
+        {sumaTrading && <div className="muted num" style={{ fontSize: 13 }}>de trading: {v.btcS(sumaTrading.neto)}</div>}
         <div className="grid2">
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Metido</span><span className="num">{res ? v.$(res.invertido) : '—'}</span></div>
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Precio de BTC</span>{precio ? <PrecioVivo valor={precio} texto={dinero(precio, moneda, 0)} /> : <span className="num">—</span>}</div>
@@ -130,6 +136,28 @@ export default function Inicio() {
           </div>
         )}
       </section>
+
+      {v.perfil.mostrarTrading && (
+        <section className="card stack" aria-label="Últimos trades">
+          <div className="row between"><h2>Trades</h2><Link to="/trading">Ver trading</Link></div>
+          {ultimosTrades.length === 0 ? <p className="muted">Sin trades. Apunta el primero con el botón ＋.</p> : (
+            <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, gap: 8 }}>
+              {ultimosTrades.map((f) => (
+                <li key={f.trade.id} className="row between">
+                  <span>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento} <span className="muted num" style={{ fontSize: 13 }}>{fechaCorta(f.trade.fechaCierre ?? f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ''}</span></span>
+                  <span className={`num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}{f.calculo.btc != null && !v.privado ? ` · ${btcConSigno(f.calculo.btc)}` : ''}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {v.perfil.mostrarTrading && (
+        <Link className="card row between" to="/estadisticas" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span className="row"><ChartNoAxesCombined size={20} strokeWidth={1.75} aria-hidden="true" /> <b>Ver estadísticas</b></span>
+          <span className="muted">Cartera, compras y mercado</span>
+        </Link>
+      )}
 
       {comisionAlta && res && <p className="warn">Has pagado el {porcentaje(res.pctComisiones)} de lo metido en comisiones.</p>}
       <div className="row wrap">

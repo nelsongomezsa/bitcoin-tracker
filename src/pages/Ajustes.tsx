@@ -8,7 +8,8 @@ import { MONEDAS } from '../lib/schemas'
 import { informeFifoAnual } from '../lib/calculos'
 import { dinero, fechaCorta } from '../lib/format'
 import { leerArchivo, mensajeImportacion, type ResultadoImportacion } from '../lib/importar'
-import { descargarCsv, descargarInforme, descargarXlsx, informeFifoCsv } from '../lib/exportar'
+import { leerArchivoTrades, type ResultadoTrades } from '../lib/importarTrades'
+import { descargarCsv, descargarInforme, descargarTradesCsv, descargarTradesXlsx, descargarXlsx, informeFifoCsv } from '../lib/exportar'
 import { activarBloqueo, bloqueoActivo, bloqueoSoportado, desactivarBloqueo } from '../lib/bloqueo'
 import { borrarCuenta } from '../lib/borrarCuenta'
 import { confirmarAltaTotp, iniciarAltaTotp, mfaHabilitado } from '../lib/mfa'
@@ -30,6 +31,10 @@ export default function Ajustes() {
   const [totp, setTotp] = useState<{ secreto: TotpSecret; uri: string } | null>(null)
   const [codigo, setCodigo] = useState('')
   const archivo = useRef<HTMLInputElement>(null)
+  const archivoTrades = useRef<HTMLInputElement>(null)
+  const [bufTrades, setBufTrades] = useState<ArrayBuffer | null>(null)
+  const [acumulado, setAcumulado] = useState(false)
+  const [prevT, setPrevT] = useState<ResultadoTrades | null>(null)
 
   useEffect(() => { void bloqueoSoportado().then(setSoporteBloqueo) }, [])
 
@@ -53,6 +58,39 @@ export default function Ajustes() {
       for (const o of prev.operaciones) await v.guardarOperacion(o)
       setMsg(`Se han importado ${prev.operaciones.length} compras.`)
       setPrev(null)
+    } catch (e) {
+      setMsg(mensajeError(e, 'No se ha podido completar la importación.'))
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  async function elegirArchivoTrades(f: File | undefined) {
+    setMsg('')
+    setPrevT(null)
+    if (!f) return
+    try {
+      const buf = await f.arrayBuffer()
+      setBufTrades(buf)
+      setPrevT(leerArchivoTrades(buf, 'USD', { acumulado }))
+    } catch (e) {
+      setMsg(mensajeImportacion(e).replace('Fecha, Precio, Cantidad y Comisión', 'Fecha inicio, Precio entrada y Precio salida'))
+    } finally {
+      if (archivoTrades.current) archivoTrades.current.value = ''
+    }
+  }
+  function cambiarAcumulado(on: boolean) {
+    setAcumulado(on)
+    if (bufTrades) { try { setPrevT(leerArchivoTrades(bufTrades, 'USD', { acumulado: on })) } catch { /* se mantiene la previsualización */ } }
+  }
+  async function confirmarImportacionTrades() {
+    if (!prevT) return
+    setImportando(true)
+    try {
+      for (const t of prevT.trades) await v.guardarTrade(t)
+      setMsg(`Se han importado ${prevT.trades.length} trades.`)
+      setPrevT(null)
+      setBufTrades(null)
     } catch (e) {
       setMsg(mensajeError(e, 'No se ha podido completar la importación.'))
     } finally {
@@ -104,6 +142,22 @@ export default function Ajustes() {
         </label>
       </section>
 
+      <section className="card stack" aria-label="Apariencia">
+        <h2>Apariencia</h2>
+        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
+          <input type="checkbox" checked={v.perfil.mostrarTrading} onChange={(e) => void v.guardarPerfil({ ...v.perfil, mostrarTrading: e.target.checked })} /> Mostrar Trading
+        </label>
+        <p className="notice">Con Trading, la barra queda: Inicio · Mercado · ＋ · Trading · Ajustes, y Estadísticas pasa a Inicio.</p>
+        {v.perfil.mostrarTrading && (
+          <>
+            <label style={{ flexDirection: 'row', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
+              <input type="checkbox" checked={v.perfil.sumarTradingACartera} onChange={(e) => void v.guardarPerfil({ ...v.perfil, sumarTradingACartera: e.target.checked })} /> Sumar los BTC ganados con trades a mi cartera
+            </label>
+            <p className="notice">En Inicio aparece una línea aparte «de trading». El precio medio de tus compras no cambia.</p>
+          </>
+        )}
+      </section>
+
       <section className="card stack" aria-label="Importar">
         <h2>Importar desde Excel o CSV</h2>
         <p className="muted">Columnas: Fecha, Precio, Cantidad y Comisión. Se importan como compras en {v.moneda}. El archivo se procesa en tu dispositivo y no se sube a ningún sitio (máx. 2 MB).</p>
@@ -126,12 +180,45 @@ export default function Ajustes() {
         )}
       </section>
 
+      {v.perfil.mostrarTrading && (
+        <section className="card stack" id="importar-trades" aria-label="Importar trades">
+          <h2>Importar trades desde Excel o CSV</h2>
+          <p className="muted">Columnas: Trade, Fecha inicio, Fecha cierre, Precio entrada, Precio salida, % ganancia y Total ganado (BTC). Un «x5» en la cabecera o en la columna Trade se lee como apalancamiento. Se importan en USD; el archivo no se sube a ningún sitio (máx. 2 MB).</p>
+          <input ref={archivoTrades} type="file" accept=".xlsx,.xls,.csv" aria-label="Archivo de trades a importar" onChange={(e) => void elegirArchivoTrades(e.target.files?.[0])} />
+          {prevT && (
+            <div className="stack">
+              <h3>Previsualización: {prevT.trades.length} trades válidos, {prevT.errores.length} con errores{prevT.apalancamiento ? ` · apalancamiento x${prevT.apalancamiento}` : ''}</h3>
+              <label style={{ flexDirection: 'row', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
+                <input type="checkbox" checked={acumulado} onChange={(e) => cambiarAcumulado(e.target.checked)} /> «Total ganado (BTC)» es un acumulado (se importa la diferencia de cada fila)
+              </label>
+              <div style={{ overflowX: 'auto', maxHeight: 260 }}>
+                <table>
+                  <thead><tr><th>Inicio</th><th>Cierre</th><th>Entrada</th><th>Salida</th><th>Dir.</th><th>x</th><th>BTC</th></tr></thead>
+                  <tbody>{prevT.trades.slice(0, 50).map((t, i) => <tr key={i}><td className="num">{fechaCorta(t.fechaInicio)}</td><td className="num">{t.fechaCierre ? fechaCorta(t.fechaCierre) : '—'}</td><td className="num">{dinero(t.precioEntrada, t.moneda, 0)}</td><td className="num">{t.precioSalida ? dinero(t.precioSalida, t.moneda, 0) : '—'}</td><td>{t.direccion}</td><td className="num">{t.apalancamiento}</td><td className="num">{t.btcGanadoManual ?? '—'}</td></tr>)}</tbody>
+                </table>
+              </div>
+              {prevT.errores.length > 0 && <ul className="err" style={{ margin: 0 }}>{prevT.errores.slice(0, 5).map((e) => <li key={e.fila}>Fila {e.fila}: {e.motivo}</li>)}</ul>}
+              <div className="row">
+                <button onClick={() => setPrevT(null)}>Cancelar</button>
+                <button className="btn-primary" style={{ flex: 1 }} disabled={importando || prevT.trades.length === 0} onClick={() => void confirmarImportacionTrades()}>Importar {prevT.trades.length}</button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="card stack" aria-label="Exportar">
         <h2>Exportar copia de seguridad</h2>
         <div className="row wrap">
           <button onClick={() => descargarCsv(v.operaciones)}>Descargar CSV</button>
           <button onClick={() => descargarXlsx(v.operaciones)}>Descargar Excel</button>
         </div>
+        {v.perfil.mostrarTrading && v.trades.length > 0 && (
+          <div className="row wrap">
+            <button onClick={() => descargarTradesCsv(v.trades)}>Trades en CSV</button>
+            <button onClick={() => descargarTradesXlsx(v.trades)}>Trades en Excel</button>
+          </div>
+        )}
       </section>
 
       <section className="card stack" aria-label="Informe FIFO">

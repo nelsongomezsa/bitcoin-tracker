@@ -24,9 +24,9 @@ export function detectarTipo(b: Uint8Array): TipoArchivo | null {
   return null
 }
 
-const norm = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
+export const norm = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase()
 
-function aFecha(v: unknown): string | null {
+export function aFecha(v: unknown): string | null {
   if (typeof v === 'number' && v > 20000 && v < 80000) {
     const d = XLSX.SSF.parse_date_code(v)
     return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
@@ -39,7 +39,7 @@ function aFecha(v: unknown): string | null {
   return null
 }
 
-function aNumero(v: unknown): number {
+export function aNumero(v: unknown): number {
   if (typeof v === 'number') return v
   const s = String(v ?? '').replace(/[€$\s]/g, '')
   if (!s) return NaN
@@ -79,7 +79,8 @@ export function filasAOperaciones(filas: unknown[][], moneda: Moneda): Resultado
   return { operaciones, errores }
 }
 
-export function leerArchivo(buf: ArrayBuffer, moneda: Moneda): ResultadoImportacion {
+/** Lee un Excel/CSV (en el navegador) y prueba cada hoja con el conversor hasta que una encaje. */
+export function leerArchivoCon<T>(buf: ArrayBuffer, conv: (filas: unknown[][]) => T): T {
   if (buf.byteLength > MAX_BYTES) throw new Error('tamano')
   const bytes = new Uint8Array(buf)
   const tipo = detectarTipo(bytes)
@@ -88,13 +89,15 @@ export function leerArchivo(buf: ArrayBuffer, moneda: Moneda): ResultadoImportac
   for (const nombre of wb.SheetNames.slice(0, 10)) {
     const filas = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[nombre], { header: 1, raw: true, defval: null })
     try {
-      return filasAOperaciones(filas, moneda)
+      return conv(filas)
     } catch {
       /* prueba la siguiente hoja */
     }
   }
   throw new Error('cabecera')
 }
+
+export const leerArchivo = (buf: ArrayBuffer, moneda: Moneda): ResultadoImportacion => leerArchivoCon(buf, (filas) => filasAOperaciones(filas, moneda))
 
 export function mensajeImportacion(e: unknown): string {
   switch ((e as Error).message) {
