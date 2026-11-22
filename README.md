@@ -19,6 +19,12 @@ Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Exc
 |---|---|---|---|---|
 | ![Inicio](docs/capturas/inicio-movil.png) | ![Estadísticas](docs/capturas/estadisticas-movil.png) | ![Mercado](docs/capturas/mercado-movil.png) | ![Ballenas](docs/capturas/ballenas-movil.png) | ![Añadir compra](docs/capturas/anadir-movil.png) |
 
+Trading y Gráfico pro:
+
+| Resumen | Gráficas | Lista | Formulario | Gráfico pro |
+|---|---|---|---|---|
+| ![Resumen](docs/capturas/trading-resumen-movil.png) | ![Gráficas](docs/capturas/trading-grafica-movil.png) | ![Lista](docs/capturas/trading-lista-movil.png) | ![Formulario](docs/capturas/trading-formulario-movil.png) | ![Gráfico pro](docs/capturas/grafico-pro-movil.png) |
+
 Escritorio: [Inicio](docs/capturas/inicio-escritorio.png) · [Mercado](docs/capturas/mercado-escritorio.png) · [Estadísticas](docs/capturas/estadisticas-escritorio.png) · [Ajustes](docs/capturas/ajustes-escritorio.png)
 
 ## Funciones
@@ -32,6 +38,8 @@ Escritorio: [Inicio](docs/capturas/inicio-escritorio.png) · [Mercado](docs/capt
 - Calculadoras: bajar mi precio medio, «¿y si BTC llega a X?» y «si vendo hoy» (con una estimación orientativa del impuesto del ahorro en España).
 - **Avisos**: unos 35 en 7 grupos (movimientos de precio, máximos y mínimos, números redondos, vuelta a beneficios, hitos de ganancia, niveles clave, recordatorios de DCA, zonas de miedo y codicia, halving, resúmenes, ballenas, inicio de sesión en un dispositivo nuevo…), alertas de precio a medida, prioridad y canal por aviso, horas de silencio, límite diario, pausa, historial y envío por push o Telegram.
 - **Pestaña Mercado**: empresas y gobiernos con BTC, movimientos de ballenas (≥ 500 BTC) y carteras públicas que puedes seguir. Estadísticas: velas, indicador de miedo y codicia, dominancia, ciclo del halving, comisiones de la red, caída desde máximos, mapa de precios de compra, calendario de DCA y comisiones por plataforma.
+- **Trading** (se puede apagar en Ajustes → Apariencia): registro de entradas y salidas largas y cortas con apalancamiento. % = movimiento del precio × apalancamiento − comisiones; BTC ganados = margen × %, o lo que escribas a mano. Totales de ganado, perdido y neto (× precio actual), acumulado trade a trade, racha, duración media, gráficas, importar/exportar Excel o CSV, informe fiscal anual y avisos de trades abiertos. La app **solo registra**: no opera ni se conecta a ningún exchange.
+- **Gráfico pro** (estilo exchange, con el diseño de la app): velas de 1m a 1S con volumen, medias móviles, marcas de tus compras, ventas y trades, precio medio y próximo nivel, rendimiento por periodos y tu posición. El precio y las velas de 1m y 5m se actualizan en directo mientras la app está abierta.
 - Importar Excel/CSV con vista previa (en el propio navegador, máx. 2 MB, comprobación real del tipo de archivo) y exportar a CSV/XLSX.
 - Bloqueo opcional con Face ID o huella (WebAuthn), modo privado, funciona sin conexión y modo demo.
 
@@ -85,6 +93,8 @@ flowchart TB
 | Servicio | Para qué se usa | Desde dónde se llama | Coste |
 |---|---|---|---|
 | **API de CoinGecko** (`/coins/markets`, `/coins/bitcoin/market_chart`, `/global`, tesorerías públicas) | Precio de BTC en EUR/USD/AUD, histórico de 1 año, dominancia, empresas y gobiernos con BTC | Solo desde las tareas de GitHub Actions (nunca el navegador) | Gratis (clave *Demo* gratuita opcional) |
+| **Kraken, API pública** (`/0/public/OHLC`) | Velas de 15m, 1h, 4h, 1D y 1S (300 como mucho por temporalidad, en `mercado/velas_*`) | GitHub Actions; el navegador solo la usa para la carga inicial de las velas de 1m y 5m del Gráfico pro | Gratis, sin clave |
+| **Kraken, WebSocket público** (`wss://ws.kraken.com/v2`, canales `ticker` y `ohlc`) | Precio en directo y vela en curso de 1m/5m, solo mientras la app está abierta y en primer plano (una sola conexión compartida) | Navegador (excepción explícita: son datos públicos de mercado, sin claves ni datos del usuario; no se guardan en Firestore) | Gratis, sin clave |
 | **alternative.me** (`/fng`) | Índice de miedo y codicia | GitHub Actions | Gratis, sin clave |
 | **mempool.space** (`/v1/fees/recommended`, `/blocks/tip/height`, `/address/…`) | Comisiones de la red, cuenta atrás del halving, movimientos de ballenas, carteras públicas | GitHub Actions | Gratis, sin clave |
 | **Firebase Authentication** | Cuentas y verificación del correo | Navegador | Spark (gratis) |

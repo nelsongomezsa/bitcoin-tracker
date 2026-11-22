@@ -57,7 +57,7 @@ export default function TradingGraficas({ filas }: { filas: FilaTrade[] }) {
           <motion.path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" initial={{ pathLength: reducir ? 1 : 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: 'easeOut' }} />
           <text x={pad.l} y={H - 4} fill="var(--muted)" fontSize="10" fontFamily="var(--mono)">{fechaCorta(cerrados[0].trade.fechaCierre ?? cerrados[0].trade.fechaInicio)}</text>
           <text x={a.W - pad.r} y={H - 4} fill="var(--muted)" fontSize="10" fontFamily="var(--mono)" textAnchor="end">{fechaCorta(cerrados[cerrados.length - 1].trade.fechaCierre ?? cerrados[cerrados.length - 1].trade.fechaInicio)}</text>
-          <text x={a.W - pad.r} y={Math.max(11, y(final) - 5)} fill={color} fontSize="11" fontFamily="var(--mono)" textAnchor="end">{final > 0 ? '▲ +' : final < 0 ? '▼ −' : ''}{nf(Math.abs(final))} BTC</text>
+          <text x={pad.l} y={11} fill={color} fontSize="11" fontFamily="var(--mono)">{final > 0 ? '▲ +' : final < 0 ? '▼ −' : ''}{nf(Math.abs(final))} BTC</text>
         </svg>
       </div>
 
