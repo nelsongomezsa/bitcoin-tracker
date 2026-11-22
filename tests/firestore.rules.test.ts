@@ -131,6 +131,10 @@ describe('perfil, plan y avisos', () => {
     await assertFails(setDoc(doc(ana(), 'users/ana/plan/config'), { ...plan, extra: 1 }))
     await assertFails(setDoc(doc(beto(), 'users/ana/plan/config'), plan))
   })
+  it('plan: DCA sin fecha de inicio', async () => {
+    const plan = { capital: 1000, nivelesClave: [], dca: { porcentajeSemanal: 1, semanas: 25 } }
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana/plan/config'), plan))
+  })
   it('avisos: el cliente no puede escribir "enviados"', async () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: { nivel: { activo: true } }, tokens: ['t1'] }))
     await assertFails(setDoc(doc(ana(), 'users/ana/avisos/config'), { ajustes: {}, enviados: { nivel: 1 } }))

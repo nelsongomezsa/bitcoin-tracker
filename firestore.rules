@@ -66,7 +66,7 @@ service cloud.firestore {
             && d.nivelesClave is list && d.nivelesClave.size() <= 20
             && d.dca is map
             && d.dca.keys().hasOnly(['inicio', 'porcentajeSemanal', 'semanas'])
-            && fechaValida(d.dca.inicio)
+            && (!('inicio' in d.dca) || fechaValida(d.dca.inicio))
             && esNumero(d.dca.porcentajeSemanal) && d.dca.porcentajeSemanal >= 0 && d.dca.porcentajeSemanal <= 100
             && d.dca.semanas is int && d.dca.semanas >= 0 && d.dca.semanas <= 520
             && (!('objetivos' in d) || (d.objetivos is map && d.objetivos.keys().size() <= 10));

@@ -24,7 +24,7 @@ export default function Plan() {
   const [msg, setMsg] = useState('')
   const [capital, setCapital] = useState(String(v.plan.capital))
   const [niveles, setNiveles] = useState(v.plan.nivelesClave.map((n) => ({ precio: String(n.precio), pct: String(n.porcentajeCapital) })))
-  const [dca, setDca] = useState({ inicio: v.plan.dca.inicio, pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
+  const [dca, setDca] = useState({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
   const [obj, setObj] = useState({
     btcMeta: v.objetivos.btcMeta != null ? String(v.objetivos.btcMeta) : '',
     dineroMeta: v.objetivos.dineroMeta != null ? String(v.objetivos.dineroMeta) : '',
@@ -43,7 +43,7 @@ export default function Plan() {
   function abrirEdicion() {
     setCapital(String(v.plan.capital))
     setNiveles(v.plan.nivelesClave.map((n) => ({ precio: String(n.precio), pct: String(n.porcentajeCapital) })))
-    setDca({ inicio: v.plan.dca.inicio, pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
+    setDca({ inicio: v.plan.dca.inicio ?? '', pct: String(v.plan.dca.porcentajeSemanal), semanas: String(v.plan.dca.semanas) })
     setObj({
       btcMeta: v.objetivos.btcMeta != null ? String(v.objetivos.btcMeta) : '',
       dineroMeta: v.objetivos.dineroMeta != null ? String(v.objetivos.dineroMeta) : '',
@@ -59,7 +59,7 @@ export default function Plan() {
     const nuevo: PlanT = {
       capital: aNum(capital),
       nivelesClave: niveles.map((n) => ({ precio: aNum(n.precio), porcentajeCapital: aNum(n.pct) })),
-      dca: { inicio: dca.inicio, porcentajeSemanal: aNum(dca.pct), semanas: Math.trunc(aNum(dca.semanas)) },
+      dca: { ...(dca.inicio ? { inicio: dca.inicio } : {}), porcentajeSemanal: aNum(dca.pct), semanas: Math.trunc(aNum(dca.semanas)) },
     }
     const objetivos: Objetivos = {
       btcMeta: optNum(obj.btcMeta), dineroMeta: optNum(obj.dineroMeta),
@@ -95,7 +95,7 @@ export default function Plan() {
         <section className="card stack">
           <h2>DCA semanal</h2>
           <div className="grid2">
-            <label>Inicio<input type="date" value={dca.inicio} onChange={(e) => setDca({ ...dca, inicio: e.target.value })} /></label>
+            <label>Inicio (opcional)<input type="date" value={dca.inicio} onChange={(e) => setDca({ ...dca, inicio: e.target.value })} /></label>
             <label>% semanal<input inputMode="decimal" value={dca.pct} onChange={(e) => setDca({ ...dca, pct: e.target.value })} /></label>
             <label>Semanas<input inputMode="numeric" value={dca.semanas} onChange={(e) => setDca({ ...dca, semanas: e.target.value })} /></label>
           </div>

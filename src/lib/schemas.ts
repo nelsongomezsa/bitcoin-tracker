@@ -34,7 +34,7 @@ export const planSchema = z.object({
   capital: z.number().min(0).lt(1_000_000_000),
   nivelesClave: z.array(z.object({ precio: z.number().gt(0), porcentajeCapital: z.number().min(0).max(100) })).max(20),
   dca: z.object({
-    inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     porcentajeSemanal: z.number().min(0).max(100),
     semanas: z.number().int().min(0).max(520),
   }),

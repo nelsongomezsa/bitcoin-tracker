@@ -237,7 +237,8 @@ export interface NivelClave {
   porcentajeCapital: number
 }
 export interface ConfigDca {
-  inicio: string
+  /** Opcional: sin fecha el DCA se considera sin empezar. */
+  inicio?: string
   porcentajeSemanal: number
   semanas: number
 }
@@ -285,7 +286,7 @@ export interface ProgresoDca {
 const MS_SEMANA = 7 * 24 * 3600 * 1000
 export function progresoDca(plan: Plan, hoy: string): ProgresoDca {
   const importeSemanal = (plan.capital * plan.dca.porcentajeSemanal) / 100
-  const dif = Date.parse(hoy + 'T00:00:00Z') - Date.parse(plan.dca.inicio + 'T00:00:00Z')
+  const dif = plan.dca.inicio ? Date.parse(hoy + 'T00:00:00Z') - Date.parse(plan.dca.inicio + 'T00:00:00Z') : -1
   const semanaActual = dif < 0 ? 0 : Math.min(plan.dca.semanas, Math.floor(dif / MS_SEMANA) + 1)
   const metidoSegunPlan = importeSemanal * semanaActual
   return {

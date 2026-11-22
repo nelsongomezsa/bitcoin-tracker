@@ -161,6 +161,11 @@ describe('plan y DCA', () => {
     expect(p.metidoSegunPlan).toBe(300)
     expect(p.quedaPorMeter).toBe(2200)
   })
+  it('DCA sin fecha de inicio: sin empezar', () => {
+    const p = progresoDca({ ...PLAN, dca: { porcentajeSemanal: 1, semanas: 25 } }, '2025-06-15')
+    expect(p.semanaActual).toBe(0)
+    expect(p.quedaPorMeter).toBe(2500)
+  })
   it('DCA aún no empezado y terminado', () => {
     expect(progresoDca(PLAN, '2025-05-01').semanaActual).toBe(0)
     expect(progresoDca(PLAN, '2027-01-01').semanaActual).toBe(25)
