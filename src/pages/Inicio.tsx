@@ -31,7 +31,7 @@ export default function Inicio() {
   if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
 
   const ultimas = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).slice(-5).reverse()
-  const nivel = res ? proximoNivel(v.plan, v.operaciones, v.precios?.EUR ?? 0) : null
+  const nivel = res ? proximoNivel(v.plan, v.operaciones, v.precios?.EUR ?? 0, v.precios ?? undefined) : null
   const nivelEnMoneda = nivel ? nivel.precio * factor : undefined
   const ath = v.mercado?.maximoHistorico[moneda]
   const fg = v.mercado?.miedoCodicia

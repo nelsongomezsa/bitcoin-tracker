@@ -94,7 +94,12 @@ function Grafica({ historico, precioActualEur, factor, ops, precioMedio, proximo
           ))}
         </div>
       </div>
-      {serie.length >= 2 ? <div className="chart-box" ref={el} role="img" aria-label="Gráfica del precio de bitcoin con tus compras y ventas" /> : <p className="muted">Aún no hay histórico de precios.</p>}
+      {serie.length >= 2 ? <div
+          className="chart-box" ref={el} role="img" aria-label="Gráfica del precio de bitcoin con tus compras y ventas"
+          // Datos de la gráfica en el DOM (no se ven): permiten comprobar puntos, marcas y líneas en la auditoría automática.
+          data-periodo={periodo} data-puntos={serie.length} data-primero={serie[0].time} data-ultimo-tiempo={serie[serie.length - 1].time} data-ultimo-valor={serie[serie.length - 1].value}
+          data-marcas={JSON.stringify(marcas.map((m) => [new Date(m.time * 1000).toISOString().slice(0, 10), m.tipo]))} data-media={precioMedio > 0 ? precioMedio : ''} data-nivel={proximoNivel ?? ''}
+        /> : <p className="muted">Aún no hay histórico de precios.</p>}
       <p className="notice"><span className="warn">- - -</span> precio medio · <span className="key">· · ·</span> próximo nivel clave · <span className="gain">●</span> compra · <span className="loss">●</span> venta</p>
     </section>
   )

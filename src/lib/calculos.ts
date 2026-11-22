@@ -257,8 +257,14 @@ export interface EstadoNivel {
   estado: 'Comprado' | 'Pendiente'
 }
 
-export function estadoNiveles(plan: Plan, ops: Operacion[]): EstadoNivel[] {
-  const compras = ops.filter((o) => o.tipo === 'compra')
+/**
+ * Los niveles del plan están en EUR. Si las compras están en otra moneda hay que pasar los precios de BTC (`precios`)
+ * para convertir el precio de cada compra a EUR antes de compararlo con el nivel.
+ */
+export function estadoNiveles(plan: Plan, ops: Operacion[], precios?: PreciosBtc): EstadoNivel[] {
+  const compras = ops
+    .filter((o) => o.tipo === 'compra')
+    .map((o) => (precios && o.moneda !== 'EUR' ? { ...o, precio: convertir(o.precio, o.moneda, 'EUR', precios) } : o))
   return plan.nivelesClave.map((n) => ({
     precio: n.precio,
     importe: (plan.capital * n.porcentajeCapital) / 100,
@@ -266,8 +272,9 @@ export function estadoNiveles(plan: Plan, ops: Operacion[]): EstadoNivel[] {
   }))
 }
 
-export function proximoNivel(plan: Plan, ops: Operacion[], precioActual: number): { precio: number; bajadaNecesaria: number } | null {
-  const pend = estadoNiveles(plan, ops)
+/** `precioActual` en EUR (los niveles del plan están en EUR). */
+export function proximoNivel(plan: Plan, ops: Operacion[], precioActual: number, precios?: PreciosBtc): { precio: number; bajadaNecesaria: number } | null {
+  const pend = estadoNiveles(plan, ops, precios)
     .filter((n) => n.estado === 'Pendiente' && n.precio < precioActual)
     .sort((a, b) => b.precio - a.precio)[0]
   return pend ? { precio: pend.precio, bajadaNecesaria: 1 - pend.precio / precioActual } : null

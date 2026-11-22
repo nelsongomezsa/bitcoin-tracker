@@ -34,7 +34,7 @@ export default function Plan() {
   })
 
   const plan = v.plan
-  const estados = estadoNiveles(plan, v.operaciones)
+  const estados = estadoNiveles(plan, v.operaciones, v.precios ?? undefined)
   const total = totalPlanificadoPct(plan)
   const dcaP = progresoDca(plan, hoyISO())
   const res = v.res
