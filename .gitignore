@@ -2,9 +2,6 @@ datos-privados/
 .env
 .env.*
 !.env.example
-CLAUDE.md
-.claude/
-PROMPT.md
 node_modules/
 dist/
 .firebase/
@@ -20,7 +17,6 @@ firestore-debug.log
 ui-debug.log
 *.tsbuildinfo
 .firebaserc
-.gstack/
 
 # Satoshi: la licencia no permite redistribuir el archivo (ver public/fonts/LEEME.md)
 public/fonts/*.woff2

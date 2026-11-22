@@ -54,6 +54,57 @@ flowchart LR
 
 The client never calls CoinGecko: the jobs write `mercado/precio` and `mercado/historico`, and clients only read them (writes from clients are denied by the rules). To save free-tier reads, the client leaves a small summary (in EUR) in `users/{uid}/avisos/config` so the job reads one document per user instead of all their operations.
 
+## Stack, APIs and services at a glance
+
+A quick map of everything the project uses, so anyone (or a future project) can see the pieces at a glance.
+
+```mermaid
+flowchart TB
+  U["User (iPhone / browser)"] --> PWA["PWA<br/>React 19 · TypeScript · Vite"]
+  PWA --> FB_AUTH["Firebase Auth<br/>email + password"]
+  PWA --> FS[("Firestore<br/>per-user data")]
+  PWA --> HIBP["HaveIBeenPwned<br/>password check (k-anonymity)"]
+  PWA --> WEBAUTHN["WebAuthn<br/>Face ID / fingerprint lock"]
+  PWA -. App Check .-> RECAPTCHA["reCAPTCHA Enterprise"]
+  GHA["GitHub Actions<br/>every 15 min · daily · monthly"] --> CG["CoinGecko API<br/>price, history, market, companies"]
+  GHA --> FNG["alternative.me<br/>Fear & Greed index"]
+  GHA --> MEM["mempool.space<br/>fees, blocks, whales, wallets"]
+  GHA -->|Admin SDK| FS
+  GHA --> FCM["Firebase Cloud Messaging<br/>push alerts"]
+  GHA --> TG["Telegram Bot API<br/>optional alerts"]
+  FCM --> U
+  TG --> U
+  HOST["Firebase Hosting"] --> PWA
+```
+
+### External APIs and services
+
+| Service | Used for | Called from | Cost |
+|---|---|---|---|
+| **CoinGecko API** (`/coins/markets`, `/coins/bitcoin/market_chart`, `/global`, public treasuries) | BTC price in EUR/USD/AUD, 1-year history, dominance, companies and governments holding BTC | GitHub Actions jobs only (never the browser) | Free (optional free *Demo* key) |
+| **alternative.me** (`/fng`) | Fear & Greed index | GitHub Actions | Free, no key |
+| **mempool.space** (`/v1/fees/recommended`, `/blocks/tip/height`, `/address/…`) | Network fees, halving countdown, whale movements, followed public wallets | GitHub Actions | Free, no key |
+| **Firebase Authentication** | Accounts, email verification | Browser | Spark (free) |
+| **Cloud Firestore** | Each user's purchases, sales, goals and alert settings; shared market data | Browser (rules: owner only) and jobs (Admin SDK) | Spark (free) |
+| **Firebase Cloud Messaging** | Web push alerts on iPhone and desktop | Jobs send, service worker receives | Free |
+| **Firebase Hosting** | Serves the PWA with security headers | — | Spark (free) |
+| **Firebase App Check + reCAPTCHA Enterprise** | Blocks requests that don't come from the real app | Browser | Free tier |
+| **Telegram Bot API** | Optional alerts to a Telegram chat | GitHub Actions | Free |
+| **HaveIBeenPwned (Pwned Passwords)** | Rejects leaked passwords at sign-up; only 5 hash characters leave the device | Browser | Free, no key |
+| **GitHub Actions** | Scheduled jobs (price + alerts every 15 min, daily history, monthly keep-alive) and CI | — | Free on public repos |
+
+### Main libraries
+
+| Area | Libraries |
+|---|---|
+| UI | React, React Router, Motion (animations), lucide-react (icons) |
+| Charts | lightweight-charts (price chart with markers), Recharts (statistics) |
+| Data and validation | Zod (forms mirrored by Firestore rules), SheetJS `xlsx` (Excel/CSV import and export) |
+| PWA | vite-plugin-pwa, Workbox |
+| Backend jobs | firebase-admin (Node scripts in `jobs/`) |
+| Testing | Vitest, fast-check (property tests), decimal.js (independent exact calculator), `@firebase/rules-unit-testing` (Firestore rules), jsdom |
+| Quality | TypeScript, ESLint, gitleaks |
+
 ## Optional integrations (free)
 
 - **Telegram alerts.** Create a bot with @BotFather, then `gh secret set TELEGRAM_BOT_TOKEN --repo <you>/bitcoin-tracker` (paste the token when prompted, never in a chat) and put the bot username in `VITE_TELEGRAM_BOT`. Users link their chat from the Alerts screen with a one-time 15-minute code. Without the secret the job simply skips Telegram.
