@@ -63,3 +63,16 @@ describe('rendimiento por periodos', () => {
     expect(rendimiento(hist, 0, 7, ahora)).toBeNull()
   })
 })
+
+import { velasDeSerie } from '../velas'
+describe('velas de una serie', () => {
+  it('agrupa por días: apertura, máximo, mínimo y cierre', () => {
+    const p = [10, 14, 9, 12, 20, 18, 5, 7].map((valor, i) => ({ fecha: `2025-03-${String(i + 1).padStart(2, '0')}`, valor }))
+    const r = velasDeSerie(p, 7)
+    expect(r).toHaveLength(2)
+    expect(r[0]).toMatchObject({ open: 10, high: 20, low: 5, close: 5 })
+    expect(r[0].time).toBe(Date.parse('2025-03-01T00:00:00Z') / 1000)
+    expect(r[1]).toMatchObject({ open: 7, high: 7, low: 7, close: 7 })
+    expect(velasDeSerie([], 7)).toEqual([])
+  })
+})

@@ -62,3 +62,17 @@ export function rendimiento(historico: { t: number; precio: number }[], actual: 
   if (Math.abs(mejor.t - objetivo) > 3 * 86_400_000) return null // no hay dato cerca
   return actual / mejor.precio - 1
 }
+
+/**
+ * Velas de una serie diaria [{fecha 'YYYY-MM-DD', valor}]: cada vela agrupa `tamano` días (apertura = primer valor,
+ * cierre = último). Sirve para ver el valor o la rentabilidad de la cartera en velas. Sin volumen.
+ */
+export function velasDeSerie(puntos: { fecha: string; valor: number }[], tamano = 7): Vela[] {
+  const out: Vela[] = []
+  for (let i = 0; i < puntos.length; i += tamano) {
+    const g = puntos.slice(i, i + tamano)
+    const valores = g.map((p) => p.valor)
+    out.push({ time: Date.parse(`${g[0].fecha}T00:00:00Z`) / 1000, open: valores[0], high: Math.max(...valores), low: Math.min(...valores), close: valores[valores.length - 1], volume: 0 })
+  }
+  return out
+}

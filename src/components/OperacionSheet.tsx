@@ -112,15 +112,15 @@ export default function OperacionSheet({ tipo: tipoInicial, inicial, plantilla, 
   const usarPrecioActual = () => {
     if (v.precios) setF((s) => ({ ...s, precio: String(Math.round(v.precios![s.moneda])) }))
   }
-  const titulo = editando ? (tipo === 'compra' ? 'Editar compra' : 'Editar venta') : tipo === 'compra' ? 'Añadir compra' : 'Retirar / vender'
+  const titulo = editando ? (tipo === 'compra' ? 'Editar compra' : 'Editar venta') : tipo === 'compra' ? 'Apuntar compra' : 'Apuntar venta'
 
   return (
     <Sheet titulo={titulo} onCerrar={onCerrar}>
       <form className="stack" onSubmit={enviar} noValidate>
         {!editando && (
           <div className="seg" role="group" aria-label="Tipo de operación" style={{ alignSelf: 'flex-start' }}>
-            <button type="button" aria-pressed={tipo === 'compra'} onClick={() => setTipo('compra')}>Comprar</button>
-            <button type="button" aria-pressed={tipo === 'venta'} onClick={() => setTipo('venta')}>Vender</button>
+            <button type="button" aria-pressed={tipo === 'compra'} onClick={() => setTipo('compra')}>Compra</button>
+            <button type="button" aria-pressed={tipo === 'venta'} onClick={() => setTipo('venta')}>Venta</button>
           </div>
         )}
         <div className="grid2">

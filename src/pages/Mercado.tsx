@@ -29,6 +29,7 @@ export default function Mercado() {
       <div className="seg" role="tablist" aria-label="Secciones" style={{ alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' }}>
         {SECCIONES.map(([k, l]) => <button key={k} role="tab" aria-selected={seccion === k} onClick={() => setSeccion(k)}>{l}</button>)}
       </div>
+      {v.pro && <TablaPrecios v={v} />}
       {seccion === 'inst' && <Inst />}
       {seccion === 'ballenas' && <Ballenas v={v} />}
       {seccion === 'carteras' && <CarterasSec v={v} />}
@@ -115,7 +116,21 @@ function Ballenas({ v }: { v: ReturnType<typeof useVista> }) {
         </div>
       </div>
       {!d ? <p className="muted">Aún no hay datos. El servidor revisa los bloques nuevos cada 15 minutos.</p> : lista.length === 0 ? <p className="muted">Ninguna transacción de ≥ {nf.format(min)} BTC en lo guardado.</p> : (
-        <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        v.pro ? (
+          <table className="pro-historial" aria-label="Tabla de ballenas">
+            <thead><tr><th scope="col">Hora</th><th scope="col" className="r">BTC</th><th scope="col" className="r">Valor</th><th scope="col" className="r">Bloque</th></tr></thead>
+            <tbody>
+              {lista.map((m) => (
+                <tr key={m.txid} style={{ cursor: 'default' }}>
+                  <td className="num">{horaCorta(new Date(m.hora))}</td>
+                  <td className="r num warn">{nf.format(m.btc)}</td>
+                  <td className="r num">{dinero(m.btc * v.precio, v.moneda, 0)}</td>
+                  <td className="r num"><a href={`https://mempool.space/tx/${encodeURIComponent(m.txid)}`} target="_blank" rel="noopener noreferrer" aria-label="Ver la transacción en mempool.space">{nf.format(m.bloque)}</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           <AnimatePresence initial={false}>
             {lista.map((m) => (
               <motion.li key={m.txid} layout initial={reducir ? { opacity: 0 } : { opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}>
@@ -164,6 +179,35 @@ function CarterasSec({ v }: { v: ReturnType<typeof useVista> }) {
         </ul>
       )}
       {msg && <p className="err" role="alert">{msg}</p>}
+    </section>
+  )
+}
+
+/** Vista pro: lista de precios en formato tabla (precio, 24h % y volumen 24h). El volumen y el % salen del directo si está conectado. */
+function TablaPrecios({ v }: { v: ReturnType<typeof useVista> }) {
+  const p = v.precios
+  const base = v.mercado?.precios
+  const filas = (['EUR', 'USD', 'AUD'] as const).map((m) => {
+    const tick = v.ticks24h[m === 'USD' ? 'USD' : 'EUR']
+    const cambio = tick && Number.isFinite(tick.cambioPct) && m !== 'AUD' ? tick.cambioPct / 100 : (v.mercado?.cambio24h ?? null)
+    return { m, precio: p?.[m] ?? null, cambio, volumen: tick && Number.isFinite(tick.volume) ? tick.volume : null }
+  })
+  if (!p || !base) return null
+  return (
+    <section className="card" aria-label="Precios de BTC">
+      <table className="pro-historial">
+        <thead><tr><th scope="col">Par</th><th scope="col" className="r">Precio</th><th scope="col" className="r">24h %</th><th scope="col" className="r">Vol. 24h</th></tr></thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.m} style={{ cursor: 'default' }}>
+              <td><b>BTC/{f.m}</b></td>
+              <td className="r num">{f.precio ? dinero(f.precio, f.m, 0) : '—'}</td>
+              <td className={`r num ${f.cambio == null ? '' : f.cambio >= 0 ? 'gain' : 'loss'}`}>{f.cambio == null ? '—' : `${f.cambio >= 0 ? '▲ +' : '▼ −'}${nf2.format(Math.abs(f.cambio) * 100)} %`}</td>
+              <td className="r num">{f.volumen == null ? '—' : `${nf.format(f.volumen)} BTC`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   )
 }

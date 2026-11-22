@@ -25,6 +25,13 @@ Trading y Gráfico pro:
 |---|---|---|---|---|
 | ![Resumen](docs/capturas/trading-resumen-movil.png) | ![Gráficas](docs/capturas/trading-grafica-movil.png) | ![Lista](docs/capturas/trading-lista-movil.png) | ![Formulario](docs/capturas/trading-formulario-movil.png) | ![Gráfico pro](docs/capturas/grafico-pro-movil.png) |
 
+Vista simple y vista pro (Ajustes → Apariencia, o el atajo «PRO» de Inicio):
+
+| | Inicio | Estadísticas | Mercado | Trading |
+|---|---|---|---|---|
+| Simple | ![Inicio simple](docs/capturas/simple-inicio-movil.png) | ![Estadísticas simple](docs/capturas/simple-estadisticas-movil.png) | ![Mercado simple](docs/capturas/simple-mercado-movil.png) | ![Trading simple](docs/capturas/simple-trading-movil.png) |
+| Pro | ![Inicio pro](docs/capturas/pro-inicio-movil.png) | ![Estadísticas pro](docs/capturas/pro-estadisticas-movil.png) | ![Mercado pro](docs/capturas/pro-mercado-movil.png) | ![Trading pro](docs/capturas/pro-trading-movil.png) |
+
 Escritorio: [Inicio](docs/capturas/inicio-escritorio.png) · [Mercado](docs/capturas/mercado-escritorio.png) · [Estadísticas](docs/capturas/estadisticas-escritorio.png) · [Ajustes](docs/capturas/ajustes-escritorio.png)
 
 ## Funciones
@@ -40,6 +47,7 @@ Escritorio: [Inicio](docs/capturas/inicio-escritorio.png) · [Mercado](docs/capt
 - **Pestaña Mercado**: empresas y gobiernos con BTC, movimientos de ballenas (≥ 500 BTC) y carteras públicas que puedes seguir. Estadísticas: velas, indicador de miedo y codicia, dominancia, ciclo del halving, comisiones de la red, caída desde máximos, mapa de precios de compra, calendario de DCA y comisiones por plataforma.
 - **Trading** (se puede apagar en Ajustes → Apariencia): registro de entradas y salidas largas y cortas con apalancamiento. % = movimiento del precio × apalancamiento − comisiones; BTC ganados = margen × %, o lo que escribas a mano. Totales de ganado, perdido y neto (× precio actual), acumulado trade a trade, racha, duración media, gráficas, importar/exportar Excel o CSV, informe fiscal anual y avisos de trades abiertos. La app **solo registra**: no opera ni se conecta a ningún exchange.
 - **Gráfico pro** (estilo exchange, con el diseño de la app): velas de 1m a 1S con volumen, medias móviles, marcas de tus compras, ventas y trades, precio medio y próximo nivel, rendimiento por periodos y tu posición. El precio y las velas de 1m y 5m se actualizan en directo mientras la app está abierta.
+- **Vista simple o pro** (opcional, simple por defecto): la vista pro es de estilo exchange, con cifras densas en monoespaciada, velas con volumen y medias móviles en Inicio, historial de operaciones en tabla, pestañas Operaciones · Trades · Plan · Avisos, tablas en Mercado y Trading, y gráficas de la cartera en área o en velas. Cambia solo la presentación: los datos y los cálculos son los mismos.
 - Importar Excel/CSV con vista previa (en el propio navegador, máx. 2 MB, comprobación real del tipo de archivo) y exportar a CSV/XLSX.
 - Bloqueo opcional con Face ID o huella (WebAuthn), modo privado, funciona sin conexión y modo demo.
 

@@ -12,6 +12,8 @@ export interface Marca {
   /** Texto que se muestra al tocar la marca: fecha, precio, cantidad y resultado. */
   detalle: string
   precio: number
+  /** Qué se edita al tocar «Editar» en la ficha de la marca. */
+  ref: { tipo: 'operacion' | 'trade'; id: string }
 }
 export interface LineaTrade { id: string; desde: { time: number; precio: number }; hasta: { time: number; precio: number }; gana: boolean }
 
@@ -38,7 +40,7 @@ export function construirMarcas({ velas, ops, trades, moneda, precios, verCompra
       if (time == null) continue
       const esCompra = o.tipo === 'compra'
       marcas.push({
-        time, tipo: o.tipo, texto: esCompra ? 'C' : 'V', precio: o.precio,
+        time, tipo: o.tipo, texto: esCompra ? 'C' : 'V', precio: o.precio, ref: { tipo: 'operacion', id: o.id },
         detalle: `${esCompra ? 'Compra' : 'Venta'} · ${fechaCorta(o.fecha)} · precio ${dinero(o.precio, moneda, 0)} · ${esCompra ? 'metido' : 'recibido'} ${dinero(o.cantidad, moneda)} (${fBtc(esCompra ? (o.cantidad - o.comision) / o.precio : (o.cantidad + o.comision) / o.precio)})`,
       })
     }
@@ -50,11 +52,11 @@ export function construirMarcas({ velas, ops, trades, moneda, precios, verCompra
       const dir = `${t.direccion === 'largo' ? 'Largo' : 'Corto'} x${t.apalancamiento}`
       const c = calcularTrade(t, precios?.[t.moneda] ?? t.precioEntrada)
       const res = `${porcentajeConSigno(c.pct)}${c.btc != null ? ` · ${c.btc >= 0 ? '+' : '−'}${fBtc(Math.abs(c.btc))}` : ''}`
-      if (ent != null) marcas.push({ time: ent, tipo: 'entrada', texto: 'E', precio: pEnt, detalle: `Entrada ${dir} · ${fechaCorta(t.fechaInicio)} · precio ${dinero(pEnt, moneda, 0)}${t.margenBTC != null ? ` · margen ${fBtc(t.margenBTC)}` : ''}${c.abierto ? ` · sin cerrar: ${res}` : ''}` })
+      if (ent != null) marcas.push({ time: ent, tipo: 'entrada', texto: 'E', precio: pEnt, ref: { tipo: 'trade', id: t.id }, detalle: `Entrada ${dir} · ${fechaCorta(t.fechaInicio)} · precio ${dinero(pEnt, moneda, 0)}${t.margenBTC != null ? ` · margen ${fBtc(t.margenBTC)}` : ''}${c.abierto ? ` · sin cerrar: ${res}` : ''}` })
       if (t.estado === 'cerrado' && t.fechaCierre && t.precioSalida != null) {
         const sal = velaDe(velas, diaASegundos(t.fechaCierre))
         const pSal = aMoneda(t.precioSalida, t.moneda)
-        if (sal != null) marcas.push({ time: sal, tipo: 'salida', texto: 'S', precio: pSal, detalle: `Salida ${dir} · ${fechaCorta(t.fechaCierre)} · precio ${dinero(pSal, moneda, 0)} · resultado ${res}` })
+        if (sal != null) marcas.push({ time: sal, tipo: 'salida', texto: 'S', precio: pSal, ref: { tipo: 'trade', id: t.id }, detalle: `Salida ${dir} · ${fechaCorta(t.fechaCierre)} · precio ${dinero(pSal, moneda, 0)} · resultado ${res}` })
         if (ent != null && sal != null && sal > ent) lineas.push({ id: t.id, desde: { time: ent, precio: pEnt }, hasta: { time: sal, precio: pSal }, gana: c.pct >= 0 })
       }
     }

@@ -168,3 +168,41 @@ td button { min-height: 36px; min-width: 36px; padding: 0 6px; }
 /* Vista pro: atajo y base */
 .pro-tag { min-height: 32px; min-width: 0; padding: 0 10px; border-radius: var(--pill); font: 700 11px/1 var(--mono); letter-spacing: 0.08em; color: var(--muted); background: transparent; border: 1px solid var(--border-strong); }
 .pro-tag[aria-pressed='true'] { color: #140a00; background: var(--accent); border-color: var(--accent); }
+
+/* ───── Vista pro: estilo de exchange (denso, separadores finos, cifras tabulares) ───── */
+:root { --buy: #1fbf8a; --sell: #f0465a; --pro-sep: #141a24; --pro-et: #7b8696; /* gris de etiquetas: el #6B7686 pedido no llega a AA (4,1:1) sobre las tarjetas; este da 5:1 */ }
+.velas-leyenda { position: absolute; z-index: 3; left: 8px; top: 6px; right: 8px; font-size: 11px; color: var(--text); background: rgba(13, 17, 23, 0.82); padding: 3px 6px; border-radius: 6px; pointer-events: none; }
+.rend-fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 6px 4px; }
+.rend-fila .num { font-size: 12px; white-space: nowrap; }
+[data-vista='pro'] .app { gap: 10px; }
+[data-vista='pro'] .app.stack { gap: 10px; }
+[data-vista='pro'] .card { background: transparent; border: none; border-top: 1px solid var(--pro-sep); border-radius: 0; padding: 12px 0; box-shadow: none; }
+[data-vista='pro'] .card.saldo, [data-vista='pro'] .velas-caja { border-top: 1px solid var(--pro-sep); }
+[data-vista='pro'] .muted, [data-vista='pro'] .notice, [data-vista='pro'] .stat > .muted, [data-vista='pro'] .chip .k { color: var(--pro-et); }
+[data-vista='pro'] .num, [data-vista='pro'] td, [data-vista='pro'] th { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+[data-vista='pro'] .pro-et { color: var(--pro-et); font-size: 11px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.pro-resumen { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }
+.pro-valor { font-size: clamp(22px, 7vw, 30px); font-weight: 700; line-height: 1.1; }
+.pro-tabla-mini { border-collapse: collapse; font-size: 12px; }
+.pro-tabla-mini th { text-align: left; font-weight: 500; color: var(--pro-et); padding: 2px 10px 2px 0; border: none; }
+.pro-tabla-mini td { text-align: right; padding: 2px 0; border: none; }
+.pro-precio { font-size: 18px; font-weight: 700; }
+.pro-abrir { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; text-decoration: none; }
+.pro-par { display: flex; flex-direction: column; gap: 10px; }
+.pro-esqueleto { height: 300px; }
+.tabs-pro { display: flex; gap: 18px; border-bottom: 1px solid var(--pro-sep); overflow-x: auto; scrollbar-width: none; }
+.tabs-pro button { background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; min-height: 40px; padding: 0 2px; color: var(--pro-et); font-weight: 600; white-space: nowrap; }
+.tabs-pro button[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); }
+.pro-historial { width: 100%; border-collapse: collapse; }
+.pro-historial th { font-size: 11px; font-weight: 500; color: var(--pro-et); text-align: left; padding: 6px 0; border-bottom: 1px solid var(--pro-sep); }
+.pro-historial td { padding: 8px 0; border-bottom: 1px solid var(--pro-sep); vertical-align: top; font-size: 13px; }
+.pro-historial .r { text-align: right; }
+.pro-historial tbody tr { cursor: pointer; }
+.pro-historial tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pro-compra { color: var(--buy); }
+.pro-venta { color: var(--sell); }
+.pro-historial th.r, .pro-historial td.r { padding-left: 12px; white-space: nowrap; }
+.pro-historial td { font-size: 12px; }
+/* La cabecera de Inicio lleva moneda + PRO + ocultar cifras: que quepa en 390 px */
+.cabecera .row { gap: 6px; flex-wrap: nowrap; }
+.cabecera .seg button { padding: 0 10px; }

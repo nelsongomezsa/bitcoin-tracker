@@ -122,7 +122,21 @@ export default function Trading() {
             </div>
             {error && <p className="err" role="alert">{error}</p>}
             {lista.length === 0 && <p className="card muted">No hay trades en esta vista.</p>}
-            <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {v.pro && lista.length > 0 && (
+              <table className="pro-historial" aria-label="Tabla de trades">
+                <thead><tr><th scope="col">Dirección y fechas</th><th scope="col" className="r">Entrada → salida</th><th scope="col" className="r">% y BTC</th></tr></thead>
+                <tbody>
+                  {lista.map((f) => (
+                    <tr key={f.trade.id} tabIndex={0} onClick={() => setFicha(f)} onKeyDown={(e) => { if (e.key === 'Enter') setFicha(f) }} aria-label={`Trade ${f.trade.direccion} x${f.trade.apalancamiento} del ${fechaCorta(f.trade.fechaInicio)}`}>
+                      <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaCorta(f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaCorta(f.trade.fechaCierre!)}`}</div></td>
+                      <td className="r num">{dinero(f.trade.precioEntrada, f.trade.moneda, 0)}<div className="pro-et">{dinero(f.calculo.precioReferencia, f.trade.moneda, 0)}{f.calculo.abierto ? ' (hoy)' : ''}</div></td>
+                      <td className={`r num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}<div>{f.calculo.btc == null ? '—' : v.btcS(f.calculo.btc)}</div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, display: v.pro ? 'none' : undefined }}>
               {lista.map((f) => {
                 const t = f.trade, c = f.calculo
                 return (

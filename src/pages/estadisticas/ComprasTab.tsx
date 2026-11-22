@@ -6,10 +6,11 @@ import {
   aSats, btcAcumulado, calendarioDca, comparativaPrimerDia, comprasConComisionAlta, filaCompra, histogramaCompras, invertidoPorMes, mejorYPeorCompra,
 } from '../../lib/calculos'
 import { comisionPorPlataforma } from '../../lib/plataformas'
-import { claseSigno, dinero, fechaCorta, flecha, hoyISO, porcentaje, porcentajeConSigno } from '../../lib/format'
+import { claseSigno, dinero, fechaCorta, flecha, hoyISO, OCULTO, porcentaje, porcentajeConSigno } from '../../lib/format'
 import { COLORES, EJE, REJILLA, tip } from './comun'
 
 const num = new Intl.NumberFormat('es-ES')
+const nf8 = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 8, maximumFractionDigits: 8 }) // en la vista pro, el BTC siempre con 8 decimales
 
 export default function ComprasTab({ v }: { v: Vista }) {
   const reducir = useReducedMotion()
@@ -102,6 +103,31 @@ export default function ComprasTab({ v }: { v: Vista }) {
             </div>
           </section>
         </>
+      )}
+
+      {v.pro && (
+        <section className="card stack" aria-label="Tabla de compras">
+          <h2>Mis compras</h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="pro-historial">
+              <thead><tr><th scope="col">Fecha</th><th scope="col" className="r">Precio</th><th scope="col" className="r">BTC</th><th scope="col" className="r">Metido</th><th scope="col" className="r">Rentab.</th></tr></thead>
+              <tbody>
+                {[...v.ops.filter((o) => o.tipo === 'compra')].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).map((o) => {
+                  const f = filaCompra(o, v.precio)
+                  return (
+                    <tr key={o.id} style={{ cursor: 'default' }}>
+                      <td className="num">{o.fecha.split('-').reverse().join('/')}</td>
+                      <td className="r num">{dinero(o.precio, v.moneda, 0)}</td>
+                      <td className="r num">{v.privado ? OCULTO : nf8.format(f.btc)}</td>
+                      <td className="r num">{v.$(f.cantidad)}</td>
+                      <td className={`r num ${f.rentabilidad >= 0 ? 'gain' : 'loss'}`}>{v.privado ? OCULTO : `${f.rentabilidad >= 0 ? '▲' : '▼'} ${porcentajeConSigno(f.rentabilidad, 1)}`}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       <section className="card stack" aria-label="Calendario de DCA">

@@ -42,6 +42,8 @@ export function useVista() {
   return {
     ...d,
     moneda, setMoneda, precios, precio, enDirecto, pro: d.perfil.vista === 'pro',
+    /** Valor de los BTC ganados con trades, si el ajuste de sumarlos a la cartera está activo. */
+    extraValor: d.perfil.sumarTradingACartera && trading ? trading.netoValor : 0,
     alternarVista: () => d.guardarPerfil({ ...d.perfil, vista: d.perfil.vista === 'pro' ? 'simple' : 'pro' }), ticks24h: vivo.ticks, ops, res, errorFifo, privado, trading,
     togglePrivado: () => d.guardarPerfil({ ...d.perfil, modoPrivado: !privado }),
     $: (n: number) => ocultar(dinero(n, moneda)),

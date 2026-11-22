@@ -338,4 +338,43 @@ describe(`auditoría en navegador (${NOMBRE})`, () => {
     await page.keyboard.press('Escape')
     await captura('trading')
   })
+
+  it('Inicio pro: las mismas cifras que en simple, frente a la calculadora de control', async () => {
+    await irA('/')
+    await page.waitForSelector('section[aria-label="Saldo"]')
+    await page.getByRole('group', { name: 'Moneda' }).getByRole('button', { name: 'EUR' }).click()
+    await page.waitForTimeout(300)
+    const P = preciosBtc.EUR
+    const t = K.totales(ops, P)
+    // En simple (referencia) y luego en pro: tienen que dar exactamente lo mismo.
+    const simple = (await sec('Saldo').locator('.big .sr').textContent())!
+    await page.getByRole('button', { name: 'Cambiar a vista pro' }).click()
+    await page.waitForSelector('section[aria-label="Resumen pro"]')
+    await page.waitForTimeout(1200)
+    const pro = sec('Resumen pro')
+    const valorPro = (await pro.locator('.pro-valor .sr').textContent())!
+    igual('Inicio pro', 'Valor estimado = el de la vista simple', valorPro.trim(), simple.trim())
+    comparar('Inicio pro', 'Valor estimado', valorPro, t.valor)
+    const pnl = (await pro.innerText()).replace(/\s+/g, ' ')
+    const [g, r] = nums(pnl.slice(pnl.indexOf('PnL')))
+    comparar('Inicio pro', 'PnL (€)', g, t.ganancia, 2)
+    comparar('Inicio pro', 'PnL (%)', r, t.rent.mul(100), 2)
+    const celdas = await pro.locator('.pro-tabla-mini td').allInnerTexts()
+    comparar('Inicio pro', 'BTC', celdas[0], t.btc, 8)
+    comparar('Inicio pro', 'Precio medio', celdas[1], t.medioReal)
+    comparar('Inicio pro', 'Metido', celdas[2], t.invertido)
+    comparar('Inicio pro', 'Comisiones', celdas[3], t.comisiones)
+    // Historial: la compra más reciente
+    const ultima = [...ops].filter((o) => o.tipo === 'compra').sort((a, b) => (a.fecha < b.fecha ? 1 : -1))[0]
+    const o = opsEn('EUR').find((x: { fecha: string }) => x.fecha === ultima.fecha)!
+    const f = K.filaCompra(o, P)
+    const fila = (await sec('Historial de operaciones').locator('tbody tr').first().innerText()).replace(/\s+/g, ' ')
+    igual('Inicio pro', 'Historial: fecha de la compra más reciente', fila.match(/(\d{2}\/\d{2}\/\d{4})/)![1], fmtFecha(ultima.fecha))
+    comparar('Inicio pro', 'Historial: BTC', fila.match(/([\d,]+) BTC/)![1], f.btc, 8)
+    comparar('Inicio pro', 'Historial: importe', fila.match(/([\d.,]+) € [▲▼]/)![1], o.cantidad)
+    comparar('Inicio pro', 'Historial: PnL', fila.match(/[▲▼] ([−+-]?[\d.,]+) €$/)![1], f.ganancia, 2)
+    await captura('inicio-pro')
+    await page.getByRole('button', { name: 'Cambiar a vista simple' }).click()
+    await page.waitForSelector('section[aria-label="Saldo"]')
+  })
 })

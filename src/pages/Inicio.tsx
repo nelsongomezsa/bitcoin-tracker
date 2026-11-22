@@ -8,6 +8,7 @@ import Cabecera from '../components/Cabecera'
 import Contador from '../components/Contador'
 import PrecioVivo from '../components/PrecioVivo'
 import Sparkline from '../components/Sparkline'
+import InicioPro from './InicioPro'
 import { InicioEsqueleto } from '../components/Esqueleto'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
@@ -34,6 +35,7 @@ export default function Inicio() {
   }, [v.historico, v.ops, factor])
 
   if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
+  if (v.pro) return <InicioPro />
 
   // Si está activado, los BTC ganados con trades se suman a la cartera (el precio medio de las compras no cambia).
   const sumaTrading = v.perfil.sumarTradingACartera && v.trading ? v.trading : null
@@ -100,11 +102,11 @@ export default function Inicio() {
       </div>
 
       <div className="row">
-        <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Añadir compra</button>
-        <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Retirar / vender</button>
+        <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Apuntar compra</button>
+        <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Apuntar venta</button>
       </div>
 
-      {sinOps && <p className="card muted">Todavía no has apuntado ninguna operación. Empieza con «Añadir compra».</p>}
+      {sinOps && <p className="card muted">Todavía no has apuntado ninguna operación. Empieza con «Apuntar compra».</p>}
 
       <Link className="btn" to="/grafico" style={{ alignSelf: 'flex-start' }}>Abrir gráfico pro</Link>
       <PrecioChart historico={v.historico} precioActualEur={v.precios?.EUR} factor={factor} ops={v.ops} precioMedio={res?.precioMedioReal ?? 0} proximoNivel={nivelEnMoneda} />

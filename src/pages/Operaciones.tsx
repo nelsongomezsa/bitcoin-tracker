@@ -71,8 +71,8 @@ export default function Operaciones() {
         </label>
       )}
       <div className="row">
-        <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Añadir compra</button>
-        <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Retirar / vender</button>
+        <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Apuntar compra</button>
+        <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Apuntar venta</button>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
       {lista.length === 0 && <p className="card muted">No hay operaciones en esta vista.</p>}
