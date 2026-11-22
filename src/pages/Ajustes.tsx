@@ -153,6 +153,14 @@ export default function Ajustes() {
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
           <input type="checkbox" checked={v.perfil.mostrarTrading} onChange={(e) => void v.guardarPerfil({ ...v.perfil, mostrarTrading: e.target.checked })} /> Mostrar Trading
         </label>
+        <div className="stack" style={{ gap: 8 }} role="group" aria-label="Vista">
+          <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>Vista</span>
+          <div className="seg" style={{ alignSelf: 'flex-start' }}>
+            <button aria-pressed={v.perfil.vista === 'simple'} onClick={() => void v.guardarPerfil({ ...v.perfil, vista: 'simple' })}>Simple</button>
+            <button aria-pressed={v.perfil.vista === 'pro'} onClick={() => void v.guardarPerfil({ ...v.perfil, vista: 'pro' })}>Pro</button>
+          </div>
+          <p className="notice">La vista pro es más densa, con velas, tablas y pestañas tipo exchange. Los datos y los cálculos son los mismos.</p>
+        </div>
         <p className="notice">Con Trading, la barra queda: Inicio · Mercado · ＋ · Trading · Ajustes, y Estadísticas pasa a Inicio.</p>
         {v.perfil.mostrarTrading && (
           <>

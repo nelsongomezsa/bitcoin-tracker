@@ -30,6 +30,7 @@ export const perfilSchema = z.object({
   modoPrivado: z.boolean(),
   mostrarTrading: z.boolean().default(true),
   sumarTradingACartera: z.boolean().default(false),
+  vista: z.enum(['simple', 'pro']).default('simple'),
 })
 
 export const planSchema = z.object({

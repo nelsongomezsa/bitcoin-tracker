@@ -55,6 +55,7 @@ export default function Inicio() {
         <div className="seg" role="group" aria-label="Moneda">
           {MONEDAS.map((m) => <button key={m} aria-pressed={moneda === m} onClick={() => v.setMoneda(m)}>{m}</button>)}
         </div>
+        <button className="pro-tag" aria-label={v.pro ? 'Cambiar a vista simple' : 'Cambiar a vista pro'} aria-pressed={v.pro} onClick={() => void v.alternarVista()}>PRO</button>
         <button aria-label={v.privado ? 'Mostrar cifras' : 'Ocultar cifras'} aria-pressed={v.privado} onClick={() => void v.togglePrivado()}>
           {v.privado ? <EyeOff size={20} strokeWidth={1.75} /> : <Eye size={20} strokeWidth={1.75} />}
         </button>

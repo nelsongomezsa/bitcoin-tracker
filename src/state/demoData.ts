@@ -60,7 +60,7 @@ export function tradesDemo(hoy = Date.now()): Trade[] {
   return [...cerrados, ...abiertos]
 }
 
-export const PERFIL_DEMO: Perfil = { nombre: 'Demo', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false }
+export const PERFIL_DEMO: Perfil = { nombre: 'Demo', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, vista: 'simple' }
 
 export function planDemo(hoy = Date.now()): Plan {
   const precios = historicoDemo(hoy).map((p) => p.precio)

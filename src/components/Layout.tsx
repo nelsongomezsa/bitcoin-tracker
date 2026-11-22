@@ -14,6 +14,11 @@ const I = { size: 22, strokeWidth: 1.6, 'aria-hidden': true } as const
 export default function Layout() {
   const { demo, mercado, perfil } = useDatos()
   const trading = perfil.mostrarTrading
+  // La vista pro se aplica con un atributo en <html> (estilos densos de exchange).
+  useEffect(() => {
+    document.documentElement.dataset.vista = perfil.vista
+    return () => { delete document.documentElement.dataset.vista }
+  }, [perfil.vista])
   const { pathname } = useLocation()
   const reducir = useReducedMotion()
   const [online, setOnline] = useState(navigator.onLine)

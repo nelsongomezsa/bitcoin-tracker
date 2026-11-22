@@ -10,6 +10,7 @@ import {
 } from '../lib/tipos'
 import { avisosSchema, operacionSchema, perfilSchema, planSchema, tradeSchema } from '../lib/schemas'
 import type { Trade, TradeGuardable } from '../lib/trading'
+import { guardarVistaLocal, leerVistaLocal } from '../lib/modoVista'
 import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
   AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, velasSinteticas, historicoDemo, mercadoDemo, operacionesDemo, planDemo, tradesDemo,
@@ -32,7 +33,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 // ───────────── Modo demo: todo en memoria, nada llega a Firestore ─────────────
 function DemoProvider({ children }: { children: ReactNode }) {
-  const [perfil, setPerfil] = useState<Perfil>(PERFIL_DEMO)
+  const [perfil, setPerfil] = useState<Perfil>(() => ({ ...PERFIL_DEMO, vista: leerVistaLocal() }))
   const [operaciones, setOperaciones] = useState<Operacion[]>(() => operacionesDemo())
   const [trades, setTrades] = useState<Trade[]>(() => tradesDemo())
   const [plan, setPlan] = useState<Plan>(() => planDemo())
@@ -58,7 +59,7 @@ function DemoProvider({ children }: { children: ReactNode }) {
       if (ob) setObjetivos(ob)
     },
     guardarAvisos: async (a) => setAvisos(a),
-    guardarPerfil: async (p) => setPerfil(p),
+    guardarPerfil: async (p) => { guardarVistaLocal(p.vista); setPerfil(p) },
     refrescar: async () => { await new Promise((r) => setTimeout(r, 600)) },
     pedirPrueba: async () => undefined,
     crearVinculo: async () => undefined,
@@ -76,7 +77,7 @@ const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisione
 const limpiar = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T
 
 function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: string; children: ReactNode }) {
-  const [perfil, setPerfil] = useState<Perfil>({ ...PERFIL_INICIAL, nombre })
+  const [perfil, setPerfil] = useState<Perfil>({ ...PERFIL_INICIAL, nombre, vista: leerVistaLocal() })
   const [operaciones, setOperaciones] = useState<Operacion[]>([])
   const [trades, setTrades] = useState<Trade[]>([])
   const [plan, setPlan] = useState<Plan>(PLAN_VACIO)
@@ -97,10 +98,11 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
           setPerfil({
             nombre: String(d.nombre ?? ''), monedaPreferida: d.monedaPreferida ?? 'EUR', modoPrivado: Boolean(d.modoPrivado),
             mostrarTrading: d.mostrarTrading !== false, sumarTradingACartera: d.sumarTradingACartera === true,
+            vista: d.vista === 'pro' || d.vista === 'simple' ? d.vista : leerVistaLocal(),
           })
         } else if (db) {
           // Primer acceso: crea el perfil (las reglas validan cada campo).
-          void setDoc(doc(db, base), { nombre: nombre.slice(0, 60), monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, creado: serverTimestamp() })
+          void setDoc(doc(db, base), { nombre: nombre.slice(0, 60), monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, vista: leerVistaLocal(), creado: serverTimestamp() })
         }
         setListos((l) => ({ ...l, perfil: true }))
       }),
@@ -206,6 +208,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
     guardarPerfil: async (p) => {
       if (!db) return
       const v = perfilSchema.parse(p)
+      guardarVistaLocal(v.vista)
       await setDoc(doc(db, `users/${uid}`), v, { merge: true })
     },
     refrescar: async () => {

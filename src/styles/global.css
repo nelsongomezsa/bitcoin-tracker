@@ -164,3 +164,7 @@ td button { min-height: 36px; min-width: 36px; padding: 0 6px; }
 .trade-fila { font: inherit; color: inherit; cursor: pointer; transition: transform 0.18s var(--spring), border-color 0.2s; }
 .trade-fila:active { transform: scale(0.985); }
 @media (prefers-reduced-motion: reduce) { .trade-fila { transition: none; } .trade-fila:active { transform: none; } }
+
+/* Vista pro: atajo y base */
+.pro-tag { min-height: 32px; min-width: 0; padding: 0 10px; border-radius: var(--pill); font: 700 11px/1 var(--mono); letter-spacing: 0.08em; color: var(--muted); background: transparent; border: 1px solid var(--border-strong); }
+.pro-tag[aria-pressed='true'] { color: #140a00; background: var(--accent); border-color: var(--accent); }

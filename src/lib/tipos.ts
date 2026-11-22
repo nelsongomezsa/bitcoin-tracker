@@ -1,5 +1,6 @@
 import type { Moneda, Plan, PreciosBtc, PuntoPrecio, Operacion } from './calculos'
 import type { Trade, TradeGuardable } from './trading'
+import type { ModoVista } from './modoVista'
 
 export interface Perfil {
   nombre: string
@@ -9,6 +10,8 @@ export interface Perfil {
   mostrarTrading: boolean
   /** Suma los BTC ganados con trades al total de la cartera de Inicio. */
   sumarTradingACartera: boolean
+  /** Vista simple (por defecto) o pro (estilo exchange). Solo cambia la presentación. */
+  vista: ModoVista
 }
 
 /** Ajuste de un aviso: interruptor, umbral, prioridad, canales y campos propios de cada aviso. */
@@ -130,5 +133,5 @@ export const PLAN_VACIO: Plan = {
   nivelesClave: [],
   dca: { inicio: new Date().toISOString().slice(0, 10), porcentajeSemanal: 1, semanas: 25 },
 }
-export const PERFIL_INICIAL: Perfil = { nombre: '', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false }
+export const PERFIL_INICIAL: Perfil = { nombre: '', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, vista: 'simple' }
 export const AVISOS_INICIALES: AvisosDoc = { ajustes: {}, tokens: [] }

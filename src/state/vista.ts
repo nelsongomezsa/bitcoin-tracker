@@ -41,7 +41,8 @@ export function useVista() {
   const ocultar = (s: string) => (privado ? OCULTO : s)
   return {
     ...d,
-    moneda, setMoneda, precios, precio, enDirecto, ticks24h: vivo.ticks, ops, res, errorFifo, privado, trading,
+    moneda, setMoneda, precios, precio, enDirecto, pro: d.perfil.vista === 'pro',
+    alternarVista: () => d.guardarPerfil({ ...d.perfil, vista: d.perfil.vista === 'pro' ? 'simple' : 'pro' }), ticks24h: vivo.ticks, ops, res, errorFifo, privado, trading,
     togglePrivado: () => d.guardarPerfil({ ...d.perfil, modoPrivado: !privado }),
     $: (n: number) => ocultar(dinero(n, moneda)),
     $s: (n: number) => ocultar(dineroConSigno(n, moneda)),

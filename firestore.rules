@@ -27,7 +27,8 @@ service cloud.firestore {
     // ───── Todo lo del usuario cuelga de users/{uid} ─────
     match /users/{userId} {
       function perfilValido(d) {
-        return d.keys().hasOnly(['nombre', 'monedaPreferida', 'modoPrivado', 'creado', 'mostrarTrading', 'sumarTradingACartera'])
+        return d.keys().hasOnly(['nombre', 'monedaPreferida', 'modoPrivado', 'creado', 'mostrarTrading', 'sumarTradingACartera', 'vista'])
+          && (!('vista' in d) || d.vista in ['simple', 'pro'])
           && (!('mostrarTrading' in d) || d.mostrarTrading is bool)
           && (!('sumarTradingACartera' in d) || d.sumarTradingACartera is bool)
           && textoMax(d.nombre, 60)

@@ -313,3 +313,13 @@ describe('trades', () => {
     await assertFails(setDoc(doc(ana(), 'users/ana'), perfil({ sumarTradingACartera: 1 })))
   })
 })
+
+describe('vista simple o pro', () => {
+  it('el perfil acepta vista simple o pro y nada más', async () => {
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil({ vista: 'pro' })))
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil({ vista: 'simple' })))
+    await assertFails(setDoc(doc(ana(), 'users/ana'), perfil({ vista: 'exchange' })))
+    await assertFails(setDoc(doc(ana(), 'users/ana'), perfil({ vista: true })))
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil())) // los perfiles antiguos, sin el campo, siguen valiendo
+  })
+})
