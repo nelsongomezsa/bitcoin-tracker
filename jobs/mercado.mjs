@@ -67,7 +67,12 @@ async function main() {
 
   // Dispositivos nuevos (una consulta; solo cuenta lo que devuelve).
   const extras = {}
-  const nuevos = await db.collectionGroup('dispositivos').where('procesado', '==', false).get()
+  let nuevos = { docs: [] }
+  try {
+    nuevos = await db.collectionGroup('dispositivos').where('procesado', '==', false).get()
+  } catch (e) {
+    console.warn('Dispositivos nuevos no consultados:', e.message.slice(0, 80))
+  }
   for (const d of nuevos.docs) {
     const uid = d.ref.parent.parent.id
     ;(extras[uid] ??= []).push({

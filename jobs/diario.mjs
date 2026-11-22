@@ -66,7 +66,12 @@ async function main() {
   }
 
   // Limpieza: historial de más de 30 días y códigos de Telegram caducados.
-  const borrados = await limpiarHistorial(db, ahora)
+  let borrados = 0
+  try {
+    borrados = await limpiarHistorial(db, ahora)
+  } catch (e) {
+    console.warn('Historial no limpiado:', e.message.slice(0, 80))
+  }
   const caducados = await db.collection('vinculos').where('expira', '<', new Date(ahora)).limit(400).get()
   if (!caducados.empty) {
     const lote = db.batch()
