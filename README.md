@@ -13,6 +13,27 @@ App web instalable (PWA) para apuntar a mano compras y ventas de bitcoin: precio
 
 Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Excel: precio medio a mano, fórmulas que se rompían y ninguna forma rápida de saber cuánto iba ganando. Bitcoin Tracker nace para sustituir ese Excel por una app sencilla en el móvil: apuntas la compra y ves al momento tu precio medio, tu ganancia y cuándo vuelves a beneficios. Se puede importar el Excel de siempre y exportar los datos en cualquier momento.
 
+## Novedades
+
+Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.md).
+
+### 23 de noviembre de 2026
+- **Trading.** Apunta trades largos y cortos y mira cuánto ganas. Aparece por defecto en la barra de abajo (se puede apagar en Ajustes). Cada trade enseña lo ganado, lo que vale hoy y el total acumulado tras él. El % y los BTC ganados se escriben a mano y mandan sobre el cálculo, que queda como sugerencia. Incluye la **«Media por trade»**, un resumen **«Por mes»**, gráficas y avisos de trades abiertos.
+- **Importar desde Excel o CSV.** Comprueba fila a fila que el «Total histórico» cuadra con la suma de lo ganado en cada trade y avisa en la vista previa si alguna fila no cuadra.
+- **Velas y precio en directo.** El Gráfico pro enseña velas de 1 y 5 minutos en directo y el precio de toda la app se actualiza en vivo mientras está abierta.
+- **Vista simple o pro.** La vista pro, con tablas y un gráfico de velas tipo exchange, se activa en Ajustes o con el botón «PRO» de Inicio.
+- **Hora opcional** en compras, ventas y trades.
+- **Corrección:** las fechas día/mes/año de un CSV ya no se leen como fechas americanas.
+- **Auditoría de cálculos.** Una calculadora de control independiente, tests con carteras aleatorias y una auditoría en el navegador (ahora, 327 comprobaciones sin diferencias) confirman que las cifras de la pantalla son las correctas.
+
+### 22 de noviembre de 2026
+- **Ballenas, empresas y gobiernos con BTC** y carteras públicas que se pueden seguir, en la pestaña Mercado.
+- **Estadísticas ampliadas** de la cartera, de las compras y del mercado.
+- **Avisos push** (y Telegram opcional): unos 40 avisos con horas de silencio, límite diario y prioridad.
+- **Aviso de actualización:** cuando hay una versión nueva de la app, aparece «Hay una versión nueva · Actualizar».
+- **Rediseño** de toda la app y formulario con plataforma y comisión en € o en %.
+- Primera versión: compras y ventas, FIFO, plan, calculadoras, importar y exportar, modo demo y seguridad.
+
 ## Capturas (modo demo, datos inventados)
 
 | Inicio | Estadísticas | Mercado | Ballenas | Añadir compra |
@@ -139,7 +160,7 @@ Por usuario y ejecución, la tarea de avisos lee 3 documentos (`config`, `estado
 
 ## Decisiones técnicas
 
-- **Los cálculos son funciones puras con tests** (`src/lib/calculos.ts`). Los tests públicos usan datos inventados con resultados calculados a mano (10 compras falsas, compras el mismo día, venta FIFO parcial, venta de más de lo que tienes, 2 niveles comprados + 2 pendientes, DCA del 1 % semanal durante 25 semanas). Un test privado opcional compara con los resultados reales de la hoja de cálculo (`datos-privados/esperado.json`) y se salta si esos archivos no están.
+- **Los cálculos son funciones puras con tests** (`src/lib/calculos.ts`). Los tests públicos usan datos inventados con resultados calculados a mano (10 compras falsas, compras el mismo día, venta FIFO parcial, venta de más de lo que tienes, 2 niveles comprados + 2 pendientes, DCA del 1 % semanal durante 25 semanas). Un test privado opcional compara con los resultados reales de la hoja de cálculo (archivos que no se suben al repositorio) y se salta si no están.
 - **FIFO**: las ventas consumen primero los lotes más antiguos; una venta da `BTC = (recibido + comisión) / precio` y una ganancia realizada sobre el coste del lote (comisiones incluidas). El precio medio y el capital invertido se calculan sobre lo que queda.
 - **Reglas de Firestore**: validan tipo, rango y forma de cada campo (`keys().hasOnly`, importe > 0 y < 10 M, comisión ≥ 0 y < importe, precio > 0, fecha no futura, nota ≤ 200 caracteres) y lo atan todo a `users/{uid}`. 20 tests en el emulador cubren IDOR, asignación masiva y validación.
 - **Push en iOS** solo funciona desde la PWA instalada y tras un gesto del usuario, así que el permiso se pide desde un botón, nunca de forma automática. El service worker procesa directamente el mensaje de FCM.

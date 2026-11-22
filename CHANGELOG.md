@@ -1,0 +1,90 @@
+# Historial de cambios
+
+Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a la más antigua. Las cifras de los ejemplos están inventadas. La app es un registro personal: no opera ni se conecta a ningún exchange, y nada de esto es una recomendación de inversión.
+
+## 23 de noviembre de 2026
+
+### Trading (nuevo apartado)
+- **Dónde está:** aparece por defecto en la barra de abajo (Inicio · Mercado · ＋ · Trading · Ajustes). Quien no lo quiera lo apaga en Ajustes → Apariencia; en ese caso la barra vuelve a llevar Estadísticas, que también se alcanza desde una tarjeta de Inicio.
+- **El botón ＋** abre una hoja con «Apuntar compra», «Apuntar venta» y «Nuevo trade».
+- **Un trade** es una operación de entrada y salida, larga (gana si el precio sube) o corta (gana si baja). Se guarda con fechas, precios, moneda (USD, EUR o AUD), margen en BTC, comisiones, plataforma y nota. El apalancamiento es opcional y va por trade.
+- **El % y los BTC ganados se escriben a mano y mandan sobre cualquier cálculo.** El cálculo automático (movimiento del precio × apalancamiento − comisiones) solo aparece como «Sugerencia» en el formulario, con un botón para usarla.
+- **Detalle de cada trade** (al tocarlo): lo ganado o perdido en BTC, lo que vale hoy, lo que valía al cerrar y el total acumulado tras ese trade, más el cálculo paso a paso. Se puede editar, duplicar y borrar (con confirmación).
+- **Resumen:** BTC ganados, perdidos y netos; su valor al precio actual; trades ganadores; mejor y peor trade; racha actual; duración media; y la **«Media por trade»** (media simple de los % de los trades cerrados). Los trades abiertos van aparte y no suman hasta que se cierran.
+- **«Por mes»:** tabla según el mes de cierre, con el número de trades, los BTC ganados y la media de % de cada mes.
+- **Gráficas:** el total de BTC ganados acumulado trade a trade (línea escalonada) y barras con el % de cada trade.
+- **Importar desde Excel o CSV** con vista previa. Se lee «Total ganado (BTC)» de cada trade y, si la hoja trae «Total histórico», se comprueba **fila a fila** que la suma acumulada cuadra; si alguna no cuadra, la vista previa avisa antes de guardar. Un «x5» en la cabecera o en la columna Trade se lee como apalancamiento.
+- **Exportar** los trades a CSV y XLSX.
+- **Informe del año:** una sección «Trading» con lo ganado o perdido en los trades cerrados ese año, en euros al precio del día de cierre. Es una orientación, no asesoramiento fiscal.
+- **Avisos de trades abiertos:** cuando llevan más de X días abiertos o cuando van en −X % o +X %. Respetan las horas de silencio, el límite diario y la prioridad de cada aviso.
+- **Cartera:** opción para sumar los BTC ganados con trades al total de Inicio, con una línea aparte «de trading». El precio medio de las compras no cambia.
+- Ejemplo inventado: una compra de 0,05 BTC de margen con un +12 % escrito a mano da +0,006 BTC; la sugerencia automática solo propone ese número, no lo impone.
+
+### Velas en directo y precio en vivo
+- **Gráfico pro** a pantalla completa, con velas, volumen, medias móviles (7, 25 y 99), tus compras (C), ventas (V) y trades (E y S) sobre las velas, línea del precio medio y del próximo nivel del plan, rendimiento por periodos y tu posición. Se puede hacer zoom pellizcando y moverse arrastrando.
+- **Temporalidades:** 1m y 5m en directo, y 15m, 1h, 4h, 1D y 1S desde el servidor.
+- **1m y 5m en directo** mientras la pantalla está abierta, con la conexión pública de Kraken (WebSocket, sin clave). Se desconecta al salir o al pasar a segundo plano, se reconecta sola si se corta y, sin conexión, enseña las últimas velas guardadas con el aviso «sin directo».
+- **Precio en vivo en toda la app** mientras está abierta: valor de la cartera, ganancias y porcentajes se actualizan solos (como mucho una vez por segundo). Si falla, se usa el precio del servidor y se indica «Precio de hace X min».
+- **En el servidor**, la tarea programada guarda las velas de 15m y 1h cada 15 minutos y las de 4h, 1D y 1S cada pocas horas (como mucho 300 velas por temporalidad). Nada de esto gasta cuota de la base de datos del usuario.
+
+### Vista simple y vista pro
+- **Vista pro** (estilo exchange, sin copiar marcas de nadie): Inicio con el valor y el PnL arriba, tabla de datos de la cartera, precio en vivo, velas, rendimiento y botones «Apuntar compra» y «Apuntar venta»; debajo, pestañas Operaciones · Trades · Plan · Avisos, con el historial de órdenes en tabla.
+- **También en pro:** Estadísticas con las gráficas de valor y rentabilidad en área o en velas, y tablas con el BTC a 8 decimales; Mercado con la lista de precios y las ballenas en tablas; Trading con la lista de trades en tabla.
+- **Cómo se activa:** en Ajustes → Apariencia o con el atajo «PRO» de la cabecera de Inicio. Por defecto es la vista simple. Cambia solo la presentación: los datos y los cálculos son los mismos.
+- **Gráfico de velas:** al mantener pulsado, una cruz con la fecha, apertura, máximo, mínimo, cierre y volumen; al tocar una marca C, V, E o S, una ficha con la operación y un enlace para editarla. Los indicadores activados se recuerdan.
+- Los botones dicen «Apuntar compra» y «Apuntar venta», nunca «Comprar» o «Vender» a secas.
+
+### Hora opcional
+- Las compras, las ventas y los trades pueden llevar una **hora** (HH:MM). Es opcional: si está, la vista pro la muestra junto a la fecha en el historial; si no, solo la fecha. Los trades tienen hora de inicio y de cierre. La hora no cambia ningún cálculo.
+
+### Corregido
+- **CSV con fechas día/mes/año:** al importar un CSV, una fecha como `12/08/2026` se leía como fecha americana (8 de diciembre). Ahora se lee como 12 de agosto. Afecta también a la importación de compras.
+- Las operaciones con un importe que se redondea a cero ya no muestran un signo menos.
+- El plan con compras hechas en otras monedas calcula bien los niveles.
+
+### Auditoría de cálculos
+- **Calculadora de control** independiente de la app, con aritmética decimal exacta, para comprobar los cálculos de compras, FIFO, plan, calculadoras, avisos y trading.
+- **Tests de propiedades:** cientos de carteras y de conjuntos de trades aleatorios, y reglas que siempre deben cumplirse (por ejemplo, que el neto es lo ganado menos lo perdido).
+- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **327 comprobaciones, 0 diferencias**. Además hay **220 tests automáticos** y **49 tests de las reglas de seguridad** de la base de datos.
+
+## 22 de noviembre de 2026
+
+### Compras, ventas y cálculos
+- Apuntar compras y ventas a mano, con vista previa en directo: BTC recibidos, % de comisión, nuevo precio medio y resultado antes de confirmar.
+- Precio medio con y sin comisiones, «rentable desde», ganancia por compra y aviso si la comisión supera el 3 %.
+- Ventas por FIFO (el criterio de Hacienda), ganancias realizadas e informe anual en CSV. No deja vender más BTC de los que tienes.
+- Valores en EUR, USD y AUD; cada operación conserva su moneda.
+- Plataforma de cada compra (Revolut, Binance, Coinbase, Kraken, Bit2Me u otra), con la última usada preseleccionada y la comisión habitual de cada plataforma; comisión en € o en %.
+- Calculadoras: bajar el precio medio, «¿y si BTC llega a X?» y «si vendo hoy» (con una estimación orientativa del impuesto).
+- Plan con niveles clave, compra periódica (DCA) semanal y objetivos con precio de venta.
+- Importar desde Excel o CSV con vista previa y exportar a CSV y XLSX.
+
+### Pantallas y diseño
+- Rediseño: fondo negro con un brillo naranja detrás del saldo, cristal solo en elementos flotantes, animaciones suaves (que se quitan si el sistema pide menos movimiento), barra inferior con botón central.
+- Inicio con mini gráfico de 7 días, chips (precio medio, rentable desde, próximo nivel, miedo y codicia) y gráfica principal con una marca por compra o venta.
+- Tirar para refrescar, esqueletos de carga y modo privado que oculta las cifras.
+- **Aviso de actualización:** cuando hay una versión nueva de la app aparece «Hay una versión nueva · Actualizar» y se recarga al pulsar.
+- Modo demo con una cartera inventada, sin cuenta.
+
+### Estadísticas
+- Cartera frente a lo invertido, rentabilidad en el tiempo, caída desde el máximo, mejores y peores días.
+- Mis compras: mapa de precios, invertido por mes, BTC acumulado, satoshis, calendario de DCA, comisiones por plataforma y comparativa «si lo hubieras metido todo el primer día».
+- Mercado: velas diarias y semanales, índice de miedo y codicia, dominancia de bitcoin, ciclo del halving y comisiones de la red.
+
+### Mercado: ballenas e instituciones
+- **Empresas y gobiernos con BTC**, con su evolución en el tiempo y los últimos movimientos.
+- **Ballenas:** transacciones grandes detectadas en los bloques nuevos (desde 500 BTC), con enlace al explorador de la red.
+- **Carteras públicas** que publican entidades con su fuente, que se pueden seguir para recibir un aviso si se mueven.
+- Todo se descarga en el servidor y se comparte entre usuarios, sin gastar cuota de cada cuenta.
+
+### Avisos
+- Unos 40 avisos en grupos: precio, mi cartera, mi plan, trading, mercado, ballenas y carteras, resúmenes, cuenta y seguridad.
+- **Avisos push** en el móvil y el ordenador y, opcionalmente, por Telegram.
+- Alertas de precio a medida, prioridad y canal por aviso, horas de silencio, límite diario, pausa e historial de los últimos 30 días.
+- Aviso al iniciar sesión desde un dispositivo nuevo.
+- Los avisos son información, nunca consejos de inversión.
+
+### Cuenta y seguridad
+- Cuentas privadas con verificación del correo, reglas de la base de datos que solo dejan ver y cambiar lo propio, validación de los datos en el cliente y en el servidor, y cabeceras de seguridad.
+- Bloqueo opcional con Face ID o huella, rechazo de contraseñas filtradas y borrado de cuenta con todos los datos.
+- Funciona sin conexión y se instala como app en el móvil.
