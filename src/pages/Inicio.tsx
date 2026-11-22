@@ -95,7 +95,7 @@ export default function Inicio() {
 
       {sinOps && <p className="card muted">Todavía no has apuntado ninguna operación. Empieza con «Añadir compra».</p>}
 
-      <PrecioChart historico={v.historico} factor={factor} ops={v.ops} precioMedio={res?.precioMedioReal ?? 0} proximoNivel={nivelEnMoneda} />
+      <PrecioChart historico={v.historico} precioActualEur={v.precios?.EUR} factor={factor} ops={v.ops} precioMedio={res?.precioMedioReal ?? 0} proximoNivel={nivelEnMoneda} />
 
       <section className="card stack" aria-label="Últimas compras">
         <div className="row between"><h2>Últimas compras</h2><Link to="/operaciones">Ver todas</Link></div>
