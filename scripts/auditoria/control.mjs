@@ -299,3 +299,56 @@ export function eventoNivel(prev, precio, nivel, pctCerca) {
 export const zonaMiedo = (v) => (v <= 24 ? 0 : v <= 44 ? 1 : v <= 55 ? 2 : v <= 74 ? 3 : 4)
 export const nombreZona = ['Miedo extremo', 'Miedo', 'Neutral', 'Codicia', 'Codicia extrema']
 export const caidaPuntos = (referencia, valor, umbral) => referencia - valor >= umbral
+
+// ───────────── Trading ─────────────
+/** Un trade: {estado, direccion, fechaInicio, fechaCierre, precioEntrada, precioSalida, apalancamiento, margenBTC, comisiones(%), btcGanadoManual}. */
+export function tradeCtl(t, precioActual) {
+  const abierto = t.estado === 'abierto' || t.precioSalida == null
+  const ref = D(abierto ? precioActual : t.precioSalida)
+  const signoDir = t.direccion === 'corto' ? D(-1) : D(1)
+  const mov = ref.minus(t.precioEntrada).div(t.precioEntrada).mul(signoDir)
+  const pct = mov.mul(t.apalancamiento ?? 1).minus(D(t.comisiones ?? 0).div(100))
+  const btc = t.btcGanadoManual != null ? D(t.btcGanadoManual) : t.margenBTC != null ? D(t.margenBTC).mul(pct) : null
+  return { abierto, mov, pct, btc }
+}
+
+const dias = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
+
+/** Totales y detalle fila a fila. `precios` = {EUR, USD, AUD} (precio de BTC); `vista` = moneda en la que se muestran los valores. */
+export function totalesTradingCtl(trades, precios, vista) {
+  const cerrado = (t) => t.estado === 'cerrado' && t.precioSalida != null
+  const cierre = (t) => t.fechaCierre ?? t.fechaInicio
+  const cerrados = trades.map((t, i) => ({ t, i })).filter((x) => cerrado(x.t))
+    .sort((a, b) => (cierre(a.t) < cierre(b.t) ? -1 : cierre(a.t) > cierre(b.t) ? 1 : a.t.fechaInicio < b.t.fechaInicio ? -1 : a.t.fechaInicio > b.t.fechaInicio ? 1 : a.i - b.i))
+    .map((x) => x.t)
+  const abiertos = trades.filter((t) => !cerrado(t))
+  let acum = CERO
+  const filas = cerrados.map((t) => {
+    const c = tradeCtl(t, precios[t.moneda])
+    const b = c.btc ?? CERO
+    acum = acum.plus(b)
+    const k = D(precios[vista]).div(precios[t.moneda]) // moneda del trade → vista
+    return { ...c, btcN: b, valeHoy: c.btc == null ? null : b.mul(precios[vista]), valia: c.btc == null ? null : b.mul(t.precioSalida).mul(k), acumulado: acum }
+  })
+  const ganado = sumar(filas.filter((f) => f.btcN.gt(0)).map((f) => f.btcN))
+  const perdido = sumar(filas.filter((f) => f.btcN.lt(0)).map((f) => f.btcN)).neg()
+  const neto = ganado.minus(perdido)
+  const filasAb = abiertos.map((t) => tradeCtl(t, precios[t.moneda]))
+  const n = filas.length
+  let racha = 0
+  for (let i = n - 1; i >= 0; i--) {
+    const s = filas[i].pct.gt(0) ? 1 : filas[i].pct.lt(0) ? -1 : 0
+    if (s === 0 || (racha !== 0 && Math.sign(racha) !== s)) break
+    racha += s
+  }
+  const porPct = [...filas].sort((a, b) => b.pct.comparedTo(a.pct))
+  return {
+    filas, ganado, perdido, neto, netoValor: neto.mul(precios[vista]),
+    abiertos: sumar(filasAb.map((f) => f.btc ?? CERO)),
+    pctTotal: sumar(filas.map((f) => f.pct)),
+    pctGanadores: n ? D(filas.filter((f) => f.pct.gt(0)).length).div(n) : CERO,
+    gananciaMedia: n ? sumar(filas.map((f) => f.pct)).div(n) : CERO,
+    mejor: porPct[0]?.pct ?? null, peor: porPct.length ? porPct[porPct.length - 1].pct : null,
+    racha, duracionMedia: n ? D(cerrados.reduce((s, t) => s + dias(t.fechaInicio, cierre(t)), 0)).div(n) : CERO,
+  }
+}

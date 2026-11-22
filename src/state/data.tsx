@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  addDoc, collection, deleteDoc, doc, getDocFromServer, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
+  addDoc, collection, deleteDoc, deleteField, doc, getDocFromServer, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from './auth'
@@ -8,10 +8,11 @@ import type { Operacion, Plan, PuntoPrecio } from '../lib/calculos'
 import {
   AVISOS_INICIALES, PERFIL_INICIAL, PLAN_VACIO, type AvisosDoc, type Datos, type Mercado, type Objetivos, type OperacionGuardable, type Perfil,
 } from '../lib/tipos'
-import { avisosSchema, operacionSchema, perfilSchema, planSchema } from '../lib/schemas'
+import { avisosSchema, operacionSchema, perfilSchema, planSchema, tradeSchema } from '../lib/schemas'
+import type { Trade, TradeGuardable } from '../lib/trading'
 import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
-  AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, historicoDemo, mercadoDemo, operacionesDemo, planDemo,
+  AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, historicoDemo, mercadoDemo, operacionesDemo, planDemo, tradesDemo,
 } from './demoData'
 
 const Ctx = createContext<Datos | null>(null)
@@ -33,6 +34,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 function DemoProvider({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil>(PERFIL_DEMO)
   const [operaciones, setOperaciones] = useState<Operacion[]>(() => operacionesDemo())
+  const [trades, setTrades] = useState<Trade[]>(() => tradesDemo())
   const [plan, setPlan] = useState<Plan>(() => planDemo())
   const [objetivos, setObjetivos] = useState<Objetivos>(OBJETIVOS_DEMO)
   const [avisos, setAvisos] = useState<AvisosDoc>(AVISOS_DEMO)
@@ -40,12 +42,17 @@ function DemoProvider({ children }: { children: ReactNode }) {
   const historico = useMemo(() => historicoDemo(), [])
 
   const value: Datos = {
-    demo: true, cargando: false, perfil, operaciones, plan, objetivos, avisos, mercado, historico, telegramVinculado: false,
+    demo: true, cargando: false, perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado: false,
     guardarOperacion: async (o, id) => {
       const v = operacionSchema.parse(o)
       setOperaciones((prev) => (id ? prev.map((x) => (x.id === id ? { ...v, id } : x)) : [...prev, { ...v, id: `demo-${crypto.randomUUID()}` }]))
     },
     borrarOperacion: async (id) => setOperaciones((p) => p.filter((o) => o.id !== id)),
+    guardarTrade: async (t, id) => {
+      const v = tradeSchema.parse(t)
+      setTrades((prev) => (id ? prev.map((x) => (x.id === id ? { ...v, id } : x)) : [...prev, { ...v, id: `demo-${crypto.randomUUID()}` }]))
+    },
+    borrarTrade: async (id) => setTrades((p) => p.filter((x) => x.id !== id)),
     guardarPlan: async (p, ob) => {
       setPlan(p)
       if (ob) setObjetivos(ob)
@@ -65,11 +72,13 @@ function DemoProvider({ children }: { children: ReactNode }) {
 
 // ───────────── Firestore ─────────────
 const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
+const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota']
 const limpiar = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T
 
 function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: string; children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil>({ ...PERFIL_INICIAL, nombre })
   const [operaciones, setOperaciones] = useState<Operacion[]>([])
+  const [trades, setTrades] = useState<Trade[]>([])
   const [plan, setPlan] = useState<Plan>(PLAN_VACIO)
   const [objetivos, setObjetivos] = useState<Objetivos>({})
   const [avisos, setAvisos] = useState<AvisosDoc>(AVISOS_INICIALES)
@@ -85,10 +94,13 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
       onSnapshot(doc(db, base), (s) => {
         if (s.exists()) {
           const d = s.data()
-          setPerfil({ nombre: String(d.nombre ?? ''), monedaPreferida: d.monedaPreferida ?? 'EUR', modoPrivado: Boolean(d.modoPrivado) })
+          setPerfil({
+            nombre: String(d.nombre ?? ''), monedaPreferida: d.monedaPreferida ?? 'EUR', modoPrivado: Boolean(d.modoPrivado),
+            mostrarTrading: d.mostrarTrading !== false, sumarTradingACartera: d.sumarTradingACartera === true,
+          })
         } else if (db) {
           // Primer acceso: crea el perfil (las reglas validan cada campo).
-          void setDoc(doc(db, base), { nombre: nombre.slice(0, 60), monedaPreferida: 'EUR', modoPrivado: false, creado: serverTimestamp() })
+          void setDoc(doc(db, base), { nombre: nombre.slice(0, 60), monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, creado: serverTimestamp() })
         }
         setListos((l) => ({ ...l, perfil: true }))
       }),
@@ -103,6 +115,20 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
           }),
         )
         setListos((l) => ({ ...l, ops: true }))
+      }),
+      onSnapshot(collection(db, `${base}/trades`), (s) => {
+        setTrades(
+          s.docs.map((d) => {
+            const x = d.data()
+            const opc = (k: string) => (typeof x[k] === 'number' ? { [k]: x[k] as number } : {})
+            return {
+              id: d.id, estado: x.estado, direccion: x.direccion, fechaInicio: x.fechaInicio, precioEntrada: num(x.precioEntrada), moneda: x.moneda ?? 'USD',
+              apalancamiento: num(x.apalancamiento, 1), ...(typeof x.fechaCierre === 'string' ? { fechaCierre: x.fechaCierre } : {}),
+              ...opc('precioSalida'), ...opc('margenBTC'), ...opc('comisiones'), ...opc('btcGanadoManual'),
+              ...(typeof x.plataforma === 'string' ? { plataforma: x.plataforma } : {}), ...(typeof x.nota === 'string' ? { nota: x.nota } : {}),
+            } as Trade
+          }),
+        )
       }),
       onSnapshot(doc(db, `${base}/plan/config`), (s) => {
         if (!s.exists()) return
@@ -141,7 +167,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
   }, [uid, nombre])
 
   const value: Datos = {
-    demo: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, plan, objetivos, avisos, mercado, historico, telegramVinculado,
+    demo: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado,
     guardarOperacion: async (o: OperacionGuardable, id) => {
       if (!db) return
       const v = limpiar(operacionSchema.parse(o))
@@ -150,6 +176,19 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
     },
     borrarOperacion: async (id) => {
       if (db) await deleteDoc(doc(db, `users/${uid}/operaciones/${id}`))
+    },
+    guardarTrade: async (t: TradeGuardable, id) => {
+      if (!db) return
+      const v = limpiar(tradeSchema.parse(t))
+      if (id) {
+        // Los opcionales que ya no están se borran del documento (updateDoc solo fusiona).
+        const quitar = Object.fromEntries(OPCIONALES_TRADE.filter((k) => !(k in v)).map((k) => [k, deleteField()]))
+        await updateDoc(doc(db, `users/${uid}/trades/${id}`), { ...v, ...quitar, editado: serverTimestamp() })
+      }
+      else await addDoc(collection(db, `users/${uid}/trades`), { ...v, creado: serverTimestamp() })
+    },
+    borrarTrade: async (id) => {
+      if (db) await deleteDoc(doc(db, `users/${uid}/trades/${id}`))
     },
     guardarPlan: async (p, ob) => {
       if (!db) return

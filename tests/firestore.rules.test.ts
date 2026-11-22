@@ -77,7 +77,7 @@ describe('mercado', () => {
 
 describe('mercado: documentos nuevos solo lectura', () => {
   it('ballenas, instituciones, carteras y velas: leer sí, escribir nunca', async () => {
-    for (const id of ['ballenas', 'instituciones', 'carteras', 'velas', 'fng', 'global', 'red', 'estadisticas', 'telegram']) {
+    for (const id of ['ballenas', 'instituciones', 'carteras', 'velas', 'velas_15m', 'velas_1h', 'velas_4h', 'velas_1d', 'velas_1w', 'fng', 'global', 'red', 'estadisticas', 'telegram']) {
       await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore() as never, `mercado/${id}`), { x: 1 }))
       await assertSucceeds(getDoc(doc(ana(), `mercado/${id}`)))
       await assertFails(setDoc(doc(ana(), `mercado/${id}`), { x: 2 }))
@@ -237,5 +237,77 @@ describe('avisos: ajustes generales, alertas y Telegram', () => {
     await assertSucceeds(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ precioInicio: 72000, monedaInicio: 'USD' })))
     await assertFails(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ precioInicio: -1 })))
     await assertFails(setDoc(doc(ana(), 'users/ana/plan/config'), plan({ monedaInicio: 'GBP' })))
+  })
+})
+
+describe('trades', () => {
+  const trade = (extra: Record<string, unknown> = {}) => ({
+    estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-03-01', fechaCierre: '2025-03-04', precioEntrada: 80000, precioSalida: 82520, moneda: 'USD',
+    apalancamiento: 5, margenBTC: 0.05, comisiones: 0.4, creado: serverTimestamp(), ...extra,
+  })
+  const abierto = (extra: Record<string, unknown> = {}) => ({ estado: 'abierto', direccion: 'corto', fechaInicio: '2025-03-01', precioEntrada: 80000, moneda: 'EUR', apalancamiento: 1, creado: serverTimestamp(), ...extra })
+  const crear = (d: Record<string, unknown>, id = 't1', quien = ana) => setDoc(doc(quien(), `users/ana/trades/${id}`), d)
+
+  it('el dueño crea, lee, edita y borra', async () => {
+    await assertSucceeds(crear(trade()))
+    await assertSucceeds(getDoc(doc(ana(), 'users/ana/trades/t1')))
+    await assertSucceeds(updateDoc(doc(ana(), 'users/ana/trades/t1'), { nota: 'ok', editado: serverTimestamp() }))
+    await assertSucceeds(deleteDoc(doc(ana(), 'users/ana/trades/t1')))
+  })
+  it('abierto sin salida ni cierre; con todos los opcionales', async () => {
+    await assertSucceeds(crear(abierto()))
+    await assertSucceeds(crear(trade({ btcGanadoManual: -0.002, plataforma: 'Exchange', nota: 'prueba' }), 't2'))
+  })
+  it('un trade cerrado necesita fecha y precio de salida', async () => {
+    const { precioSalida: _p, ...sinSalida } = trade()
+    await assertFails(crear(sinSalida))
+    const { fechaCierre: _f, ...sinCierre } = trade()
+    await assertFails(crear(sinCierre))
+  })
+  it('otro usuario ni lee ni escribe; sin sesión nada; sin verificar nada', async () => {
+    await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore(), 'users/ana/trades/t1'), { x: 1 }))
+    await assertFails(getDoc(doc(beto(), 'users/ana/trades/t1')))
+    await assertFails(crear(trade(), 't9', beto))
+    await assertFails(deleteDoc(doc(beto(), 'users/ana/trades/t1')))
+    await assertFails(crear(trade(), 't9', anon))
+    await assertFails(crear(trade(), 't9', anaSinVerificar))
+  })
+  it('mass assignment y tipos', async () => {
+    await assertFails(crear(trade({ rol: 'admin' })))
+    await assertFails(crear(trade({ estado: 'otro' })))
+    await assertFails(crear(trade({ direccion: 'neutral' })))
+    await assertFails(crear(trade({ moneda: 'BTC' })))
+    await assertFails(crear(trade({ precioEntrada: '80000' })))
+    await assertFails(crear(trade({ nota: 'x'.repeat(201) })))
+    await assertFails(crear(trade({ plataforma: 'x'.repeat(41) })))
+  })
+  it('rangos: precios, apalancamiento 1–125, margen, comisiones y manual', async () => {
+    await assertFails(crear(trade({ precioEntrada: 0 })))
+    await assertFails(crear(trade({ precioSalida: -1 })))
+    await assertFails(crear(trade({ apalancamiento: 0.5 })))
+    await assertFails(crear(trade({ apalancamiento: 126 })))
+    await assertSucceeds(crear(trade({ apalancamiento: 125 }), 'a1'))
+    await assertSucceeds(crear(trade({ apalancamiento: 1 }), 'a2'))
+    await assertFails(crear(trade({ margenBTC: 0 })))
+    await assertFails(crear(trade({ margenBTC: 21000000 })))
+    await assertFails(crear(trade({ comisiones: -0.1 })))
+    await assertFails(crear(trade({ comisiones: 101 })))
+    await assertFails(crear(trade({ btcGanadoManual: 21000000 })))
+    await assertFails(crear(trade({ btcGanadoManual: '1' })))
+  })
+  it('fechas: formato, no futura y cierre no anterior al inicio', async () => {
+    await assertFails(crear(trade({ fechaInicio: '01/03/2025' })))
+    await assertFails(crear(trade({ fechaInicio: '2999-01-01', fechaCierre: '2999-01-02' })))
+    await assertFails(crear(trade({ fechaCierre: '2025-02-28' })))
+    await assertSucceeds(crear(trade({ fechaCierre: '2025-03-01' }), 'mismo'))
+  })
+  it('al editar no se puede cambiar «creado»', async () => {
+    await env.withSecurityRulesDisabled(async (c) => setDoc(doc(c.firestore(), 'users/ana/trades/t1'), { ...trade(), creado: new Date('2025-01-01') }))
+    await assertFails(setDoc(doc(ana(), 'users/ana/trades/t1'), trade()))
+  })
+  it('el perfil acepta mostrarTrading y sumarTradingACartera, y solo booleanos', async () => {
+    await assertSucceeds(setDoc(doc(ana(), 'users/ana'), perfil({ mostrarTrading: false, sumarTradingACartera: true })))
+    await assertFails(setDoc(doc(ana(), 'users/ana'), perfil({ mostrarTrading: 'si' })))
+    await assertFails(setDoc(doc(ana(), 'users/ana'), perfil({ sumarTradingACartera: 1 })))
   })
 })

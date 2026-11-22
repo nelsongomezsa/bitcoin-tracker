@@ -28,6 +28,8 @@ export const perfilSchema = z.object({
   nombre: z.string().trim().max(60),
   monedaPreferida: monedaSchema,
   modoPrivado: z.boolean(),
+  mostrarTrading: z.boolean().default(true),
+  sumarTradingACartera: z.boolean().default(false),
 })
 
 export const planSchema = z.object({
@@ -76,3 +78,28 @@ export const avisosSchema = z.object({
   telegram: z.object({ desconectar: z.boolean().optional() }).optional(),
   historialLeidoHasta: z.date().nullable().optional(),
 }).passthrough()
+
+const fechaISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha no válida').refine((f) => f <= hoyMasUno(), 'La fecha no puede ser futura')
+const textoCorto = (n: number) => z.string().trim().max(n, `Máximo ${n} caracteres`)
+
+// Las mismas reglas que firestore.rules para users/{uid}/trades/{id}.
+export const tradeSchema = z
+  .object({
+    estado: z.enum(['abierto', 'cerrado']),
+    direccion: z.enum(['largo', 'corto']),
+    fechaInicio: fechaISO,
+    fechaCierre: fechaISO.optional(),
+    precioEntrada: z.number({ message: 'Introduce el precio de entrada' }).gt(0, 'El precio debe ser mayor que 0').lt(100_000_000),
+    precioSalida: z.number({ message: 'Introduce un número' }).gt(0, 'El precio debe ser mayor que 0').lt(100_000_000).optional(),
+    moneda: monedaSchema.default('USD'),
+    apalancamiento: z.number({ message: 'Introduce el apalancamiento' }).min(1, 'Mínimo x1').max(125, 'Máximo x125').default(1),
+    margenBTC: z.number({ message: 'Introduce un número' }).gt(0, 'El margen debe ser mayor que 0').lt(21_000_000).optional(),
+    comisiones: z.number({ message: 'Introduce un número' }).min(0, 'No puede ser negativa').max(100, 'Máximo 100 %').optional(),
+    btcGanadoManual: z.number({ message: 'Introduce un número' }).gt(-21_000_000).lt(21_000_000).optional(),
+    plataforma: textoCorto(40).regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
+    nota: textoCorto(200).optional(),
+  })
+  .refine((t) => t.estado === 'abierto' || (t.fechaCierre != null && t.precioSalida != null), { path: ['precioSalida'], message: 'Un trade cerrado necesita fecha y precio de salida' })
+  .refine((t) => t.fechaCierre == null || t.fechaCierre >= t.fechaInicio, { path: ['fechaCierre'], message: 'El cierre no puede ser anterior al inicio' })
+
+export type TradeInput = z.infer<typeof tradeSchema>

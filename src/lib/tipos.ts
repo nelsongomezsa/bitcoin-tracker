@@ -1,9 +1,14 @@
 import type { Moneda, Plan, PreciosBtc, PuntoPrecio, Operacion } from './calculos'
+import type { Trade, TradeGuardable } from './trading'
 
 export interface Perfil {
   nombre: string
   monedaPreferida: Moneda
   modoPrivado: boolean
+  /** Muestra el apartado Trading en la barra (por defecto sí). */
+  mostrarTrading: boolean
+  /** Suma los BTC ganados con trades al total de la cartera de Inicio. */
+  sumarTradingACartera: boolean
 }
 
 /** Ajuste de un aviso: interruptor, umbral, prioridad, canales y campos propios de cada aviso. */
@@ -93,6 +98,7 @@ export interface Datos {
   cargando: boolean
   perfil: Perfil
   operaciones: Operacion[]
+  trades: Trade[]
   plan: Plan
   objetivos: Objetivos
   avisos: AvisosDoc
@@ -102,6 +108,8 @@ export interface Datos {
   telegramVinculado: boolean
   guardarOperacion: (o: OperacionGuardable, id?: string) => Promise<void>
   borrarOperacion: (id: string) => Promise<void>
+  guardarTrade: (t: TradeGuardable, id?: string) => Promise<void>
+  borrarTrade: (id: string) => Promise<void>
   guardarPlan: (p: Plan, objetivos?: Objetivos) => Promise<void>
   guardarAvisos: (a: AvisosDoc) => Promise<void>
   guardarPerfil: (p: Perfil) => Promise<void>
@@ -120,5 +128,5 @@ export const PLAN_VACIO: Plan = {
   nivelesClave: [],
   dca: { inicio: new Date().toISOString().slice(0, 10), porcentajeSemanal: 1, semanas: 25 },
 }
-export const PERFIL_INICIAL: Perfil = { nombre: '', monedaPreferida: 'EUR', modoPrivado: false }
+export const PERFIL_INICIAL: Perfil = { nombre: '', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false }
 export const AVISOS_INICIALES: AvisosDoc = { ajustes: {}, tokens: [] }

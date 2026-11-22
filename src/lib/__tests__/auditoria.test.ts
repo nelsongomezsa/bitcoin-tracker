@@ -10,6 +10,7 @@ import { comisionPorPlataforma } from '../plataformas'
 import { evaluarDiarios, evaluarFrecuentes, estadoInicial } from '../../../jobs/avisos/evaluadores.mjs'
 import { mercadoDemo, operacionesDemo, planDemo } from '../../state/demoData'
 import { dinero, porcentaje } from '../format'
+import * as T from '../trading'
 
 // Tolerancias del encargo
 const EUR = 0.01 // importes
@@ -387,5 +388,96 @@ describe('formato mostrado en pantalla', () => {
     expect(dinero(1234.56)).toBe('1234,56 €') // es-ES no agrupa los millares de 4 cifras
     expect(dinero(12345.6)).toBe('12.345,60 €')
     expect(porcentaje(0.1234)).toBe('12,34 %')
+  })
+})
+
+// ───────────── Trading ─────────────
+describe('trading frente a la calculadora de control', () => {
+  const PR = { EUR: 91234.5, USD: 99876.25, AUD: 151000.75 }
+  const base = (o: Partial<T.Trade>): T.Trade => ({ id: 'x', estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-01-01', fechaCierre: '2025-01-02', precioEntrada: 100, precioSalida: 110, moneda: 'USD', apalancamiento: 1, ...o })
+
+  function comparar(trades: T.Trade[], vista: A.Moneda, etiqueta: string): number {
+    let c = 0
+    const ok = (app: number, ctl: Decimal.Value, tol: number, e: string) => { cerca(app, ctl, tol, `${etiqueta} ${e}`); c++ }
+    const a = T.totalesTrading(trades, PR, vista)
+    const k = K.totalesTradingCtl(trades, PR, vista)
+    ok(a.ganado, k.ganado, BTC, 'ganado'); ok(a.perdido, k.perdido, BTC, 'perdido'); ok(a.neto, k.neto, BTC, 'neto')
+    ok(a.netoValor, k.netoValor, EUR, 'neto × precio'); ok(a.abiertos, k.abiertos, BTC, 'abiertos')
+    pp(a.pctTotal, k.pctTotal, `${etiqueta} % total`); pp(a.gananciaMedia, k.gananciaMedia, `${etiqueta} media`); pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
+    ok(a.duracionMediaDias, k.duracionMedia, 1e-9, 'duración'); ok(a.racha, k.racha, 0, 'racha')
+    if (k.mejor) { pp(a.mejor!.calculo.pct, k.mejor, `${etiqueta} mejor`); pp(a.peor!.calculo.pct, k.peor, `${etiqueta} peor`); c += 2 }
+    const filas = T.filasTrades(trades, PR, vista).filter((f) => !f.calculo.abierto)
+    expect(filas.length).toBe(k.filas.length)
+    filas.forEach((f, i) => {
+      const kf = k.filas[i]
+      pp(f.calculo.pct, kf.pct, `${etiqueta} fila ${i} %`); pp(f.calculo.movimiento, kf.mov, `${etiqueta} fila ${i} mov`); c += 2
+      ok(f.btc, kf.btcN, BTC, `fila ${i} btc`); ok(f.acumulado!, kf.acumulado, BTC, `fila ${i} acumulado`)
+      if (kf.valeHoy) { ok(f.valeHoy!, kf.valeHoy, EUR, `fila ${i} vale hoy`); ok(f.valiaAlCerrar!, kf.valia, EUR, `fila ${i} valía al cerrar`) }
+    })
+    return c
+  }
+
+  it('casos fijos', () => {
+    // largo x5 con comisiones: +3,15 % × 5 − 0,4 % = 15,35 %
+    const a = base({ precioEntrada: 80000, precioSalida: 82520, apalancamiento: 5, comisiones: 0.4, margenBTC: 0.05 })
+    expect(T.calcularTrade(a, 0).pct).toBeCloseTo(0.1535, 10)
+    expect(T.calcularTrade(a, 0).btc).toBeCloseTo(0.007675, 10)
+    // corto que gana, corto que pierde, manual, sin margen, cierre el mismo día
+    const lote = [
+      a, base({ id: 'b', direccion: 'corto', precioEntrada: 100, precioSalida: 90, margenBTC: 0.2, apalancamiento: 3 }),
+      base({ id: 'c', direccion: 'corto', precioEntrada: 100, precioSalida: 120, margenBTC: 0.1, apalancamiento: 2, comisiones: 0.1 }),
+      base({ id: 'd', btcGanadoManual: -0.0031, margenBTC: 0.5 }), base({ id: 'e', margenBTC: undefined }),
+      base({ id: 'f', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined, moneda: 'EUR', precioEntrada: 90000, margenBTC: 0.1, apalancamiento: 10 }),
+    ]
+    for (const vista of ['EUR', 'USD', 'AUD'] as const) expect(comparar(lote, vista, `fijo ${vista}`)).toBeGreaterThan(20)
+  })
+
+  it('300 conjuntos de trades aleatorios', () => {
+    const trade = fc.record({
+      estado: fc.constantFrom('abierto', 'cerrado', 'cerrado', 'cerrado'),
+      direccion: fc.constantFrom('largo', 'corto'),
+      ini: fc.integer({ min: 0, max: 300 }), dur: fc.integer({ min: 0, max: 40 }),
+      entrada: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100), salida: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100),
+      moneda: fc.constantFrom('EUR', 'USD', 'AUD'), lev: fc.constantFrom(1, 2, 3, 5, 10, 25, 125),
+      margen: fc.option(fc.integer({ min: 1, max: 500_000 }).map((n) => n / 1e6), { nil: undefined }),
+      com: fc.option(fc.integer({ min: 0, max: 300 }).map((n) => n / 100), { nil: undefined }),
+      manual: fc.option(fc.integer({ min: -50_000, max: 50_000 }).map((n) => n / 1e6), { nil: undefined }),
+    })
+    const dia = (n: number) => new Date(Date.UTC(2024, 0, 1 + n)).toISOString().slice(0, 10)
+    fc.assert(fc.property(fc.array(trade, { maxLength: 25 }), fc.constantFrom('EUR', 'USD', 'AUD'), (xs, vista) => {
+      const trades: T.Trade[] = xs.map((x, i) => ({
+        id: `t${i}`, estado: x.estado as T.EstadoTrade, direccion: x.direccion as T.Direccion, fechaInicio: dia(x.ini),
+        ...(x.estado === 'cerrado' ? { fechaCierre: dia(x.ini + x.dur), precioSalida: x.salida } : {}),
+        precioEntrada: x.entrada, moneda: x.moneda as A.Moneda, apalancamiento: x.lev,
+        ...(x.margen != null ? { margenBTC: x.margen } : {}), ...(x.com != null ? { comisiones: x.com } : {}), ...(x.manual != null ? { btcGanadoManual: x.manual } : {}),
+      }))
+      comparar(trades, vista as A.Moneda, 'aleatorio')
+      return true
+    }), { numRuns: 300 })
+  })
+
+  it('invariantes', () => {
+    const trade = fc.record({
+      dir: fc.constantFrom('largo', 'corto'), entrada: fc.integer({ min: 1000, max: 200_000 }), salida: fc.integer({ min: 1000, max: 200_000 }),
+      lev: fc.integer({ min: 1, max: 125 }), margen: fc.integer({ min: 1, max: 1_000_000 }).map((n) => n / 1e6), com: fc.integer({ min: 0, max: 200 }).map((n) => n / 100),
+    })
+    fc.assert(fc.property(fc.array(trade, { minLength: 1, maxLength: 20 }), (xs) => {
+      const trades = xs.map((x, i): T.Trade => ({ id: `t${i}`, estado: 'cerrado', direccion: x.dir as T.Direccion, fechaInicio: '2025-01-01', fechaCierre: `2025-02-${String((i % 28) + 1).padStart(2, '0')}`, precioEntrada: x.entrada, precioSalida: x.salida, moneda: 'USD', apalancamiento: x.lev, margenBTC: x.margen, comisiones: x.com }))
+      const tot = T.totalesTrading(trades, PR, 'USD')
+      // Neto = Ganado − Perdido = suma de todos los BTC; Perdido ≥ 0
+      const suma = T.filasTrades(trades, PR, 'USD').reduce((s, f) => s + f.btc, 0)
+      expect(tot.neto).toBeCloseTo(suma, 9); expect(tot.perdido).toBeGreaterThanOrEqual(0); expect(tot.ganado).toBeGreaterThanOrEqual(0)
+      expect(tot.curva.at(-1)!.acumulado).toBeCloseTo(tot.neto, 9)
+      expect(tot.pctGanadores).toBeGreaterThanOrEqual(0); expect(tot.pctGanadores).toBeLessThanOrEqual(1)
+      // largo y corto son opuestos (sin comisiones)
+      const x = xs[0]
+      const l = T.calcularTrade({ ...trades[0], direccion: 'largo', comisiones: 0 }, 1).pct, s = T.calcularTrade({ ...trades[0], direccion: 'corto', comisiones: 0 }, 1).pct
+      expect(l).toBeCloseTo(-s, 12)
+      // con x1 y misma entrada/salida el resultado es 0 sin comisiones
+      expect(T.calcularTrade({ ...trades[0], precioSalida: x.entrada, apalancamiento: 1, comisiones: 0 }, 1).pct).toBeCloseTo(0, 12)
+      // a más apalancamiento (sin comisiones), el % escala linealmente
+      expect(T.calcularTrade({ ...trades[0], comisiones: 0, apalancamiento: 2 }, 1).pct).toBeCloseTo(2 * T.calcularTrade({ ...trades[0], comisiones: 0, apalancamiento: 1 }, 1).pct, 10)
+      return true
+    }), { numRuns: 300 })
   })
 })

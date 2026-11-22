@@ -1,6 +1,7 @@
 // Cartera 100% ficticia para el modo demo, los tests visuales y las capturas del README.
 import type { Operacion, Plan, PuntoPrecio } from '../lib/calculos'
 import type { AvisosDoc, Mercado, Objetivos, Perfil } from '../lib/tipos'
+import type { Trade } from '../lib/trading'
 
 const DIA = 24 * 3600 * 1000
 
@@ -33,7 +34,33 @@ export function operacionesDemo(hoy = Date.now()): Operacion[] {
   ]
 }
 
-export const PERFIL_DEMO: Perfil = { nombre: 'Demo', monedaPreferida: 'EUR', modoPrivado: false }
+/** 15 trades ficticios (13 cerrados y 2 abiertos) a partir de la serie demo, en USD. Deterministas. */
+export function tradesDemo(hoy = Date.now()): Trade[] {
+  const h = historicoDemo(hoy)
+  const px = (diasAtras: number) => Math.round(h[h.length - 1 - diasAtras].precio * 1.08)
+  // [inicio (días atrás), duración, dirección, apalancamiento, movimiento de precio (%), margen BTC, comisiones %]
+  const filas: [number, number, 'largo' | 'corto', number, number, number, number][] = [
+    [175, 3, 'largo', 5, 3.2, 0.05, 0.4], [165, 2, 'corto', 3, 2.1, 0.04, 0.3], [152, 4, 'largo', 2, -2.4, 0.06, 0.2], [140, 1, 'largo', 10, 1.1, 0.03, 0.5],
+    [128, 5, 'corto', 5, -1.9, 0.05, 0.4], [115, 2, 'largo', 5, 4.4, 0.05, 0.4], [102, 3, 'corto', 2, 3.0, 0.08, 0.2], [90, 6, 'largo', 3, 5.8, 0.04, 0.3],
+    [74, 2, 'largo', 5, -3.3, 0.05, 0.4], [60, 4, 'corto', 5, 2.6, 0.05, 0.4], [47, 3, 'largo', 3, 1.7, 0.06, 0.3], [33, 2, 'largo', 10, 2.2, 0.03, 0.5],
+    [20, 5, 'corto', 2, -1.2, 0.07, 0.2],
+  ]
+  const cerrados: Trade[] = filas.map(([ini, dur, dir, lev, mov, margen, com], i) => {
+    const entrada = px(ini)
+    const salida = Math.round(entrada * (1 + (dir === 'corto' ? -mov : mov) / 100))
+    return {
+      id: `demo-t${i + 1}`, estado: 'cerrado', direccion: dir, fechaInicio: iso(hoy - ini * DIA), fechaCierre: iso(hoy - (ini - dur) * DIA),
+      precioEntrada: entrada, precioSalida: salida, moneda: 'USD', apalancamiento: lev, margenBTC: margen, comisiones: com, plataforma: 'Exchange demo',
+    }
+  })
+  const abiertos: Trade[] = [
+    { id: 'demo-t14', estado: 'abierto', direccion: 'largo', fechaInicio: iso(hoy - 4 * DIA), precioEntrada: px(4), moneda: 'USD', apalancamiento: 5, margenBTC: 0.05, comisiones: 0.4, plataforma: 'Exchange demo' },
+    { id: 'demo-t15', estado: 'abierto', direccion: 'corto', fechaInicio: iso(hoy - 1 * DIA), precioEntrada: px(1), moneda: 'USD', apalancamiento: 3, margenBTC: 0.04, comisiones: 0.3, plataforma: 'Exchange demo' },
+  ]
+  return [...cerrados, ...abiertos]
+}
+
+export const PERFIL_DEMO: Perfil = { nombre: 'Demo', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false }
 
 export function planDemo(hoy = Date.now()): Plan {
   const precios = historicoDemo(hoy).map((p) => p.precio)
