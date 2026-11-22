@@ -1,5 +1,5 @@
 import Sheet from './Sheet'
-import { calcularTrade, diasEntre, pasoAPaso, type FilaTrade } from '../lib/trading'
+import { calcularTrade, diasEntre, etiquetaTrade, pasoAPaso, type FilaTrade } from '../lib/trading'
 import { claseSigno, fechaCorta, flecha, hoyISO, dinero } from '../lib/format'
 import { useVista } from '../state/vista'
 
@@ -19,7 +19,7 @@ export default function TradeFicha({ fila, onEditar, onDuplicar, onBorrar, onGra
   const sinBtc = c.btc == null
   const dato = (k: string, val: string) => <div className="stat"><span className="muted" style={{ fontSize: 12 }}>{k}</span><span className="num">{val}</span></div>
   return (
-    <Sheet titulo={`${t.direccion === 'largo' ? 'Largo' : 'Corto'} x${t.apalancamiento}${c.abierto ? ' · sin cerrar' : ''}`} onCerrar={onCerrar}>
+    <Sheet titulo={`${etiquetaTrade(t)}${c.abierto ? ' · sin cerrar' : ''}`} onCerrar={onCerrar}>
       <div className="stack">
         <div className={`mid num ${claseSigno(c.pct)}`}>{flecha(c.pct)} {v.pct(c.pct)}</div>
         <div className="grid2">

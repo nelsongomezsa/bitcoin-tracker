@@ -29,17 +29,17 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
     precioEntrada: inicial ? String(inicial.precioEntrada) : '',
     precioSalida: inicial?.precioSalida != null ? String(inicial.precioSalida) : '',
     moneda: (inicial?.moneda ?? 'USD') as Moneda,
-    apalancamiento: String(inicial?.apalancamiento ?? 1),
+    apalancamiento: inicial?.apalancamiento != null ? String(inicial.apalancamiento) : '',
     margenBTC: inicial?.margenBTC != null ? String(inicial.margenBTC) : '',
     comisiones: inicial?.comisiones != null ? String(inicial.comisiones) : '',
-    manual: inicial?.btcGanadoManual != null,
+    pct: inicial?.pctManual != null ? String(inicial.pctManual) : '',
     btcManual: inicial?.btcGanadoManual != null ? String(inicial.btcGanadoManual) : '',
     plataforma: inicial ? (inicial.plataforma ?? '') : ultimaPlataforma(),
     nota: inicial?.nota ?? '',
     horaInicio: inicial?.horaInicio ?? '',
     horaCierre: inicial?.horaCierre ?? '',
   })
-  const [otroLev, setOtroLev] = useState(Boolean(inicial) && !PILDORAS.includes(inicial?.apalancamiento ?? 1))
+  const [otroLev, setOtroLev] = useState(inicial?.apalancamiento != null && !PILDORAS.includes(inicial.apalancamiento))
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
@@ -48,10 +48,12 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
   const candidato = useMemo(() => {
     const r = tradeSchema.safeParse({
       estado: f.estado, direccion: f.direccion, fechaInicio: f.fechaInicio, ...(cerrado ? { fechaCierre: f.fechaCierre, precioSalida: aNum(f.precioSalida) } : {}),
-      precioEntrada: aNum(f.precioEntrada), moneda: f.moneda, apalancamiento: aNum(f.apalancamiento),
+      precioEntrada: aNum(f.precioEntrada), moneda: f.moneda,
+      ...(f.apalancamiento.trim() !== '' ? { apalancamiento: aNum(f.apalancamiento) } : {}),
       ...(Number.isFinite(aNum(f.margenBTC)) ? { margenBTC: aNum(f.margenBTC) } : {}),
       ...(Number.isFinite(aNum(f.comisiones)) ? { comisiones: aNum(f.comisiones) } : {}),
-      ...(f.manual && Number.isFinite(aNum(f.btcManual)) ? { btcGanadoManual: aNum(f.btcManual) } : {}),
+      ...(Number.isFinite(aNum(f.pct)) ? { pctManual: aNum(f.pct) } : {}),
+      ...(Number.isFinite(aNum(f.btcManual)) ? { btcGanadoManual: aNum(f.btcManual) } : {}),
       ...(f.plataforma.trim() ? { plataforma: f.plataforma } : {}), ...(f.nota.trim() ? { nota: f.nota } : {}),
       ...(f.horaInicio ? { horaInicio: f.horaInicio } : {}), ...(cerrado && f.horaCierre ? { horaCierre: f.horaCierre } : {}),
     })
@@ -127,8 +129,9 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
         )}
 
         <div className="stack" style={{ gap: 8 }} role="group" aria-label="Apalancamiento">
-          <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>Apalancamiento</span>
+          <span className="muted" style={{ fontSize: 13, fontWeight: 500 }}>Apalancamiento (opcional)</span>
           <div className="chips">
+            <button type="button" className="opt" aria-pressed={!otroLev && f.apalancamiento === ''} onClick={() => { setOtroLev(false); setF((s) => ({ ...s, apalancamiento: '' })) }}>Ninguno</button>
             {PILDORAS.map((n) => (
               <button key={n} type="button" className="opt" aria-pressed={!otroLev && f.apalancamiento === String(n)} onClick={() => { setOtroLev(false); setF((s) => ({ ...s, apalancamiento: String(n) })) }}>x{n}</button>
             ))}
@@ -142,10 +145,19 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
           <label>Comisiones % (opcional)<input inputMode="decimal" value={f.comisiones} onChange={set('comisiones')} placeholder="0,4" /></label>
         </div>
 
-        <label style={{ flexDirection: 'row', alignItems: 'center', gap: 10, color: 'var(--text)' }}>
-          <input type="checkbox" checked={f.manual} onChange={(e) => setF((s) => ({ ...s, manual: e.target.checked }))} /> Escribir BTC ganados a mano
-        </label>
-        {f.manual && <label>BTC ganados (con signo; negativo si pierdes)<input inputMode="decimal" value={f.btcManual} onChange={set('btcManual')} placeholder="0,0089" /></label>}
+        <div className="grid2">
+          <label>% de ganancia (a mano)<input inputMode="decimal" value={f.pct} onChange={set('pct')} placeholder="15,35" /></label>
+          <label>BTC ganados (a mano)<input inputMode="decimal" value={f.btcManual} onChange={set('btcManual')} placeholder="0,0089" /></label>
+        </div>
+        <p className="notice">Lo que escribas aquí manda sobre cualquier cálculo. Negativo si pierdes.</p>
+        {vista && (
+          <div className="row between wrap" aria-label="Sugerencia">
+            <p className="notice" style={{ flex: 1 }}>
+              Sugerencia (cálculo automático{f.apalancamiento.trim() === '' ? ', sin apalancamiento' : ''}): {porcentajeConSigno(vista.c.sugerencia.pct)}{vista.c.sugerencia.btc != null ? ` · ${btcConSigno(vista.c.sugerencia.btc)}` : ''}
+            </p>
+            <button type="button" onClick={() => setF((s) => ({ ...s, pct: String(Math.round(vista.c.sugerencia.pct * 1e4) / 100), btcManual: vista.c.sugerencia.btc != null ? String(Math.round(vista.c.sugerencia.btc * 1e8) / 1e8) : s.btcManual }))}>Usar sugerencia</button>
+          </div>
+        )}
 
         <label>Plataforma (opcional)
           <input list="plataformas-trading" maxLength={40} value={f.plataforma} onChange={set('plataforma')} />

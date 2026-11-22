@@ -1,6 +1,6 @@
 // Marcas sobre las velas: compras (C), ventas (V), entradas y salidas de trades (E / S) y la línea que une cada trade.
 import { convertir, type Moneda, type Operacion, type PreciosBtc } from './calculos'
-import { calcularTrade, type Trade } from './trading'
+import { calcularTrade, etiquetaTrade, type Trade } from './trading'
 import { diaASegundos, velaDe, type Vela } from './velas'
 import { btc as fBtc, dinero, fechaCorta, porcentajeConSigno } from './format'
 
@@ -49,7 +49,7 @@ export function construirMarcas({ velas, ops, trades, moneda, precios, verCompra
     for (const t of trades) {
       const ent = velaDe(velas, diaASegundos(t.fechaInicio))
       const pEnt = aMoneda(t.precioEntrada, t.moneda)
-      const dir = `${t.direccion === 'largo' ? 'Largo' : 'Corto'} x${t.apalancamiento}`
+      const dir = etiquetaTrade(t)
       const c = calcularTrade(t, precios?.[t.moneda] ?? t.precioEntrada)
       const res = `${porcentajeConSigno(c.pct)}${c.btc != null ? ` · ${c.btc >= 0 ? '+' : '−'}${fBtc(Math.abs(c.btc))}` : ''}`
       if (ent != null) marcas.push({ time: ent, tipo: 'entrada', texto: 'E', precio: pEnt, ref: { tipo: 'trade', id: t.id }, detalle: `Entrada ${dir} · ${fechaCorta(t.fechaInicio)} · precio ${dinero(pEnt, moneda, 0)}${t.margenBTC != null ? ` · margen ${fBtc(t.margenBTC)}` : ''}${c.abierto ? ` · sin cerrar: ${res}` : ''}` })

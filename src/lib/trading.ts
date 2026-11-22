@@ -13,12 +13,15 @@ export interface Trade {
   precioEntrada: number
   precioSalida?: number
   moneda: Moneda
-  apalancamiento: number
+  /** Opcional y por trade. Sin él, el cálculo automático usa x1. */
+  apalancamiento?: number
   /** BTC que pone en el trade. */
   margenBTC?: number
   /** Comisiones en % del tamaño (0,4 = 0,4 %). */
   comisiones?: number
-  /** Si existe, manda sobre el cálculo. */
+  /** % de ganancia escrito a mano (en %, p. ej. 15,35). Manda sobre el cálculo. */
+  pctManual?: number
+  /** BTC ganados escritos a mano. Mandan sobre el cálculo. */
   btcGanadoManual?: number
   plataforma?: string
   nota?: string
@@ -26,6 +29,9 @@ export interface Trade {
   horaInicio?: string
   horaCierre?: string
 }
+
+/** «Largo x5» o, sin apalancamiento, «Largo». */
+export const etiquetaTrade = (t: Pick<Trade, 'direccion' | 'apalancamiento'>) => `${t.direccion === 'largo' ? 'Largo' : 'Corto'}${t.apalancamiento ? ` x${t.apalancamiento}` : ''}`
 
 export type TradeGuardable = Omit<Trade, 'id'>
 
@@ -46,10 +52,16 @@ export interface CalculoTrade {
   /** Precio de salida real o, si está abierto, el precio actual en la moneda del trade. */
   precioReferencia: number
   movimiento: number
+  /** % de ganancia (fracción): el escrito a mano si existe; si no, el calculado. */
   pct: number
   /** BTC ganados (o perdidos). null si no hay margen ni valor manual. */
   btc: number | null
+  /** ¿Los BTC están escritos a mano? */
   manual: boolean
+  /** ¿El % está escrito a mano? */
+  pctManual: boolean
+  /** Lo que saldría con el cálculo automático (movimiento × apalancamiento − comisiones): solo una sugerencia. */
+  sugerencia: { pct: number; btc: number | null }
 }
 
 /** `precioActual` está en la moneda del trade. */
@@ -57,10 +69,12 @@ export function calcularTrade(t: Trade, precioActual: number): CalculoTrade {
   const abierto = t.estado === 'abierto' || t.precioSalida == null
   const ref = abierto ? precioActual : (t.precioSalida as number)
   const mov = movimiento(t.precioEntrada, ref, t.direccion)
-  const pct = pctGanancia(mov, t.apalancamiento, t.comisiones ?? 0)
+  const auto = pctGanancia(mov, t.apalancamiento ?? 1, t.comisiones ?? 0)
+  const pctManual = t.pctManual != null
+  const pct = pctManual ? (t.pctManual as number) / 100 : auto
   const manual = t.btcGanadoManual != null
   const btc = manual ? (t.btcGanadoManual as number) : t.margenBTC != null ? t.margenBTC * pct : null
-  return { abierto, precioReferencia: ref, movimiento: mov, pct, btc, manual }
+  return { abierto, precioReferencia: ref, movimiento: mov, pct, btc, manual, pctManual, sugerencia: { pct: auto, btc: t.margenBTC != null ? t.margenBTC * auto : null } }
 }
 
 const f = (n: number, d: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)
@@ -70,9 +84,14 @@ const pctTxt = (n: number, d = 2) => `${signo(Math.round(n * 10 ** (d + 2)) / 10
 /** «Movimiento +3,15% × 5 − comisiones 0,4% = +15,35% → +0,0089 BTC» */
 export function pasoAPaso(t: Trade, c: CalculoTrade): string {
   const com = t.comisiones ?? 0
-  let s = `Movimiento ${pctTxt(c.movimiento)} × ${f(t.apalancamiento, Number.isInteger(t.apalancamiento) ? 0 : 1)}`
-  if (com) s += ` − comisiones ${f(com, 2).replace(/,00$/, '').replace(/(,\d)0$/, '$1')}%`
-  s += ` = ${pctTxt(c.pct)}`
+  let s: string
+  if (c.pctManual) s = `% escrito a mano: ${pctTxt(c.pct)}`
+  else {
+    const lev = t.apalancamiento
+    s = `Movimiento ${pctTxt(c.movimiento)}${lev ? ` × ${f(lev, Number.isInteger(lev) ? 0 : 1)}` : ''}`
+    if (com) s += ` − comisiones ${f(com, 2).replace(/,00$/, '').replace(/(,\d)0$/, '$1')}%`
+    s += ` = ${pctTxt(c.pct)}`
+  }
   if (c.manual) s += ` · BTC escritos a mano: ${signo(c.btc!)}${f(Math.abs(c.btc!), 4)} BTC`
   else if (c.btc != null) s += ` → ${signo(c.btc)}${f(Math.abs(c.btc), 4)} BTC`
   else s += ' → sin margen: no suma BTC'
@@ -137,7 +156,10 @@ export interface TotalesTrading {
   abiertos: number
   abiertosValor: number
   pctGanadores: number
-  gananciaMedia: number
+  /** Suma de los % de los trades cerrados (fracción). */
+  sumaPct: number
+  /** Media simple de los % de los trades cerrados (fracción): «Media por trade». */
+  pctMedia: number
   mejor: FilaTrade | null
   peor: FilaTrade | null
   /** Racha actual: >0 ganadores seguidos, <0 perdedores seguidos. */
@@ -170,7 +192,8 @@ export function totalesTrading(trades: Trade[], precios: PreciosBtc, vista: Mone
   return {
     nCerrados: n, nAbiertos: abi.length, ganado, perdido, neto, netoValor: neto * precios[vista], abiertos, abiertosValor: abiertos * precios[vista],
     pctGanadores: n ? pcts.filter((p) => p > 0).length / n : 0,
-    gananciaMedia: n ? pcts.reduce((s, p) => s + p, 0) / n : 0,
+    sumaPct: pcts.reduce((s, p) => s + p, 0),
+    pctMedia: n ? pcts.reduce((s, p) => s + p, 0) / n : 0,
     mejor: sorted[0] ?? null,
     peor: sorted.length ? sorted[sorted.length - 1] : null,
     racha,
@@ -207,12 +230,4 @@ export function precioEurEnFecha(historico: { t: number; precio: number }[], fec
   let mejor: { t: number; precio: number } | null = null
   for (const p of historico) if (!mejor || Math.abs(p.t - objetivo) < Math.abs(mejor.t - objetivo)) mejor = p
   return mejor && Math.abs(mejor.t - objetivo) <= 2 * MS_DIA ? mejor.precio : null
-}
-
-/**
- * % total del trading = neto / capital inicial (fracción). Preparado pero sin usar en pantalla hasta confirmarlo con el Excel real:
- * mientras tanto el resumen enseña el neto en BTC y su valor. null si no hay un capital inicial válido.
- */
-export function pctTotalSobreCapital(netoBtc: number, capitalInicialBtc: number | null | undefined): number | null {
-  return capitalInicialBtc != null && capitalInicialBtc > 0 ? netoBtc / capitalInicialBtc : null
 }

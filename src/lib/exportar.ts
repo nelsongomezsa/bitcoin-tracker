@@ -47,7 +47,7 @@ const filasTrades = (ts: Trade[]) =>
   [...ts].sort((a, b) => (a.fechaInicio < b.fechaInicio ? -1 : a.fechaInicio > b.fechaInicio ? 1 : 0)).map((t, i) => {
     const c = t.estado === 'cerrado' ? calcularTrade(t, t.precioSalida ?? t.precioEntrada) : null
     return [
-      i + 1, t.estado, t.direccion, t.fechaInicio, t.fechaCierre ?? '', t.precioEntrada, t.precioSalida ?? '', t.moneda, t.apalancamiento, t.margenBTC ?? '', t.comisiones ?? '',
+      i + 1, t.estado, t.direccion, t.fechaInicio, t.fechaCierre ?? '', t.precioEntrada, t.precioSalida ?? '', t.moneda, t.apalancamiento ?? '', t.margenBTC ?? '', t.comisiones ?? '',
       c ? Math.round(c.pct * 1e6) / 1e4 : '', c?.btc != null ? c.btc : '', seguroCelda(t.plataforma ?? ''), seguroCelda(t.nota ?? ''), t.horaInicio ?? '', t.horaCierre ?? '',
     ]
   })

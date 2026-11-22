@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcularTrade, diasEntre, filasTrades, informeTradingAnual, movimiento, ordenarTrades, pasoAPaso, pctGanancia, totalesTrading, tradeAbiertoSuperaDias, type Trade } from '../trading'
+import { calcularTrade, diasEntre, etiquetaTrade, filasTrades, informeTradingAnual, movimiento, ordenarTrades, pasoAPaso, pctGanancia, totalesTrading, tradeAbiertoSuperaDias, type Trade } from '../trading'
 import { tradeSchema } from '../schemas'
 
 const P = { EUR: 90000, USD: 100000, AUD: 150000 }
@@ -57,8 +57,8 @@ describe('totales y detalle', () => {
     expect(x.pctGanadores).toBe(0.5)
     expect(x.mejor?.trade.id).toBe('a')
     expect(x.peor?.trade.id).toBe('b')
-    expect(x).not.toHaveProperty('pctTotal')
-    expect(x.gananciaMedia).toBeCloseTo(0.0625, 10)
+    expect(x.pctMedia).toBeCloseTo(0.0625, 10) // media simple de +20, −5, +10 y 0
+    expect(x.sumaPct).toBeCloseTo(0.25, 10)
     expect(x.duracionMediaDias).toBeCloseTo((2 + 4 + 1 + 2) / 4)
   })
   it('acumulado trade a trade; los abiertos no entran', () => {
@@ -108,15 +108,15 @@ describe('informe fiscal y avisos', () => {
 
 describe('esquema Zod', () => {
   const ok = { estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-03-01', fechaCierre: '2025-03-04', precioEntrada: 80000, precioSalida: 82520 }
-  it('aplica los valores por defecto (USD, x1)', () => {
+  it('aplica el valor por defecto de la moneda (USD); el apalancamiento es opcional', () => {
     const r = tradeSchema.parse(ok)
     expect(r.moneda).toBe('USD')
-    expect(r.apalancamiento).toBe(1)
+    expect(r.apalancamiento).toBeUndefined() // opcional
   })
   it('rechaza lo que las reglas rechazan', () => {
     for (const mal of [
       { horaInicio: '25:00' }, { horaCierre: '9:30' }, { fechaCierre: '2025-03-01', horaInicio: '15:00', horaCierre: '14:59' },
-      { apalancamiento: 126 }, { apalancamiento: 0 }, { precioEntrada: 0 }, { precioSalida: undefined }, { fechaCierre: '2025-02-01' }, { fechaInicio: '2999-01-01' },
+      { apalancamiento: 126 }, { apalancamiento: 0 }, { pctManual: 100000 }, { pctManual: 'x' }, { precioEntrada: 0 }, { precioSalida: undefined }, { fechaCierre: '2025-02-01' }, { fechaInicio: '2999-01-01' },
       { margenBTC: 0 }, { comisiones: 101 }, { direccion: 'neutral' }, { nota: 'x'.repeat(201) }, { plataforma: '<b>' },
     ]) expect(tradeSchema.safeParse({ ...ok, ...mal }).success, JSON.stringify(mal)).toBe(false)
     expect(tradeSchema.safeParse({ ...ok, horaInicio: '10:00', horaCierre: '12:30' }).success).toBe(true)
@@ -137,12 +137,31 @@ describe('precio histórico por día', () => {
   })
 })
 
-import { pctTotalSobreCapital } from '../trading'
-describe('% total sobre el capital inicial (preparado)', () => {
-  it('neto / capital; null sin capital válido', () => {
-    expect(pctTotalSobreCapital(0.035, 0.5)).toBeCloseTo(0.07)
-    expect(pctTotalSobreCapital(-0.01, 0.5)).toBeCloseTo(-0.02)
-    expect(pctTotalSobreCapital(0.035, 0)).toBeNull()
-    expect(pctTotalSobreCapital(0.035, undefined)).toBeNull()
+describe('calibración: % y BTC a mano, apalancamiento opcional', () => {
+  it('el % escrito a mano manda sobre el cálculo y el cálculo queda como sugerencia', () => {
+    const c = calcularTrade(t({ pctManual: 12, apalancamiento: 5 }), 0)
+    expect(c.pct).toBeCloseTo(0.12, 12)
+    expect(c.pctManual).toBe(true)
+    expect(c.btc).toBeCloseTo(0.05 * 0.12, 12) // margen × % a mano
+    expect(c.sugerencia.pct).toBeCloseTo(0.1535, 6)
+    expect(c.sugerencia.btc).toBeCloseTo(0.05 * 0.1535, 8)
+  })
+  it('los BTC a mano mandan sobre margen × %', () => {
+    expect(calcularTrade(t({ pctManual: 12, btcGanadoManual: 0.0089 }), 0)).toMatchObject({ btc: 0.0089, manual: true })
+  })
+  it('sin apalancamiento se calcula como x1 y se etiqueta sin «x»', () => {
+    const sin = t({ apalancamiento: undefined, comisiones: 0 })
+    expect(calcularTrade(sin, 0).pct).toBeCloseTo(0.0315, 6)
+    expect(etiquetaTrade(sin)).toBe('Largo')
+    expect(etiquetaTrade(t({ direccion: 'corto' }))).toBe('Corto x5')
+    expect(pasoAPaso(sin, calcularTrade(sin, 0))).toBe('Movimiento +3,15% = +3,15% → +0,0016 BTC')
+    expect(pasoAPaso(t({ pctManual: 15.35 }), calcularTrade(t({ pctManual: 15.35 }), 0))).toContain('% escrito a mano: +15,35%')
+  })
+  it('«Media por trade» es la media simple de los % de los cerrados; los abiertos no cuentan', () => {
+    const lote = [t({ id: '1', pctManual: 10 }), t({ id: '2', pctManual: -4, fechaCierre: '2025-03-05' }), t({ id: '3', pctManual: 30, fechaCierre: '2025-03-06' }), t({ id: '4', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined, pctManual: 99 })]
+    const x = totalesTrading(lote, P, 'USD')
+    expect(x.sumaPct).toBeCloseTo(0.36, 12)
+    expect(x.pctMedia).toBeCloseTo(0.12, 12)
   })
 })
+

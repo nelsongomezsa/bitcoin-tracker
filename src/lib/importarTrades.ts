@@ -1,14 +1,21 @@
 // Importación de trades desde Excel/CSV. Todo ocurre en el navegador.
+// Calibrado con una hoja real: «Total ganado (BTC)» es el de cada trade, «Total histórico» es la suma acumulada (se usa para comprobar),
+// y el % y los BTC de cada trade son los escritos en la hoja (mandan sobre cualquier cálculo).
 import { aFecha, aNumero, leerArchivoCon, MAX_FILAS, norm } from './importar'
 import { tradeSchema, type TradeInput } from './schemas'
 import { movimiento } from './trading'
 import type { Moneda } from './calculos'
 
+export interface Desajuste { fila: number; historico: number; calculado: number }
 export interface ResultadoTrades {
   trades: TradeInput[]
   errores: { fila: number; motivo: string }[]
-  /** Apalancamiento leído de la cabecera o de la columna (null si no aparece). */
+  /** Apalancamiento leído de la cabecera o de la columna (null si no aparece: es opcional). */
   apalancamiento: number | null
+  /** ¿La hoja trae «Total histórico»? */
+  hayHistorico: boolean
+  /** Filas donde la suma acumulada de «Total ganado» no coincide con «Total histórico». */
+  desajustes: Desajuste[]
 }
 
 /** «x5», «5x», «×10» → 5, 5, 10. */
@@ -19,12 +26,10 @@ export function leerApalancamiento(v: unknown): number | null {
   return n >= 1 && n <= 125 ? n : null
 }
 
-interface Opciones {
-  /** «Total ganado (BTC)» es un acumulado: cada trade vale la diferencia con el anterior. */
-  acumulado?: boolean
-}
+/** Tolerancia al comparar la suma acumulada con «Total histórico» (la hoja suele redondear a 7 decimales). */
+export const TOLERANCIA_HISTORICO = 1e-7
 
-export function filasATrades(filas: unknown[][], moneda: Moneda, { acumulado = false }: Opciones = {}): ResultadoTrades {
+export function filasATrades(filas: unknown[][], moneda: Moneda): ResultadoTrades {
   const h = filas.findIndex((f) => f.some((c) => norm(c).includes('entrada')) && f.some((c) => norm(c).includes('fecha')))
   if (h < 0) throw new Error('cabecera')
   const cab = filas[h].map(norm)
@@ -36,49 +41,69 @@ export function filasATrades(filas: unknown[][], moneda: Moneda, { acumulado = f
   const iSal = col('precio', 'salida') >= 0 ? col('precio', 'salida') : col('salida')
   const iPct = col('%')
   const iBtc = col('total', 'ganado') >= 0 ? col('total', 'ganado') : col('btc')
-  // El apalancamiento puede venir en cualquier cabecera («Trade x5») o en la columna Trade de cada fila.
+  const iHist = col('historico')
   const levCab = filas[h].map(leerApalancamiento).find((n) => n != null) ?? null
+
+  // Filas de la tabla (termina en la primera sin fecha de inicio).
+  const cuerpo: { n: number; f: unknown[] }[] = []
+  for (let i = h + 1; i < filas.length; i++) {
+    const f = filas[i]
+    if (!f || f[iIni] == null || f[iIni] === '') break
+    cuerpo.push({ n: i + 1, f })
+  }
+  // El % puede venir como 15,35 (puntos porcentuales), como 0,1535 (celda con formato %) o como «15,35%».
+  const numPct = cuerpo.map(({ f }) => (iPct >= 0 && typeof f[iPct] === 'number' ? Math.abs(f[iPct] as number) : null)).filter((x): x is number => x != null)
+  const comoFraccion = numPct.length > 0 && Math.max(...numPct) <= 2
+  const leerPct = (v: unknown): number | null => {
+    if (v == null || v === '') return null
+    if (typeof v === 'number') return Number.isFinite(v) ? (comoFraccion ? v * 100 : v) : null
+    const n = aNumero(String(v).replace('%', ''))
+    return Number.isFinite(n) ? n : null
+  }
 
   const trades: TradeInput[] = []
   const errores: ResultadoTrades['errores'] = []
-  let previo = 0
+  const desajustes: Desajuste[] = []
+  let acumulado = 0
   let levFila: number | null = null
-  for (let i = h + 1; i < filas.length; i++) {
-    const f = filas[i]
-    if (!f || f[iIni] == null || f[iIni] === '') break // fin de la tabla
+  for (const { n, f } of cuerpo) {
     if (trades.length + errores.length >= MAX_FILAS) {
-      errores.push({ fila: i + 1, motivo: `Máximo ${MAX_FILAS} filas por importación` })
+      errores.push({ fila: n, motivo: `Máximo ${MAX_FILAS} filas por importación` })
       break
     }
-    const lev = (iTrade >= 0 ? leerApalancamiento(f[iTrade]) : null) ?? levCab ?? 1
-    levFila = levFila ?? (iTrade >= 0 ? leerApalancamiento(f[iTrade]) : null)
+    const levF = iTrade >= 0 ? leerApalancamiento(f[iTrade]) : null
+    levFila = levFila ?? levF
+    const lev = levF ?? levCab ?? undefined
     const entrada = aNumero(f[iEnt])
     const salida = iSal >= 0 && f[iSal] != null && f[iSal] !== '' ? aNumero(f[iSal]) : NaN
     const fin = iFin >= 0 ? aFecha(f[iFin]) : null
     const cerrado = Number.isFinite(salida) && fin != null
-    // Dirección: si el % del Excel tiene el signo contrario al movimiento del precio, es un corto.
+    const pct = cerrado ? leerPct(iPct >= 0 ? f[iPct] : null) : null
+    // Dirección: si el % de la hoja tiene el signo contrario al movimiento del precio, es un corto.
     let direccion: 'largo' | 'corto' = 'largo'
-    if (cerrado && iPct >= 0) {
-      const pct = aNumero(f[iPct])
+    if (cerrado && pct != null && pct !== 0) {
       const mov = movimiento(entrada, salida, 'largo')
-      if (Number.isFinite(pct) && pct !== 0 && mov !== 0 && Math.sign(pct) !== Math.sign(mov)) direccion = 'corto'
+      if (mov !== 0 && Math.sign(pct) !== Math.sign(mov)) direccion = 'corto'
     }
     let btc: number | undefined
     if (iBtc >= 0 && f[iBtc] != null && f[iBtc] !== '') {
-      const n = aNumero(f[iBtc])
-      if (Number.isFinite(n)) {
-        btc = acumulado ? Math.round((n - previo) * 1e10) / 1e10 : n
-        previo = n
-      }
+      const v = aNumero(f[iBtc])
+      if (Number.isFinite(v)) btc = v
+    }
+    acumulado += btc ?? 0
+    if (iHist >= 0 && f[iHist] != null && f[iHist] !== '') {
+      const hist = aNumero(f[iHist])
+      if (Number.isFinite(hist) && Math.abs(hist - acumulado) > TOLERANCIA_HISTORICO) desajustes.push({ fila: n, historico: hist, calculado: acumulado })
     }
     const r = tradeSchema.safeParse({
       estado: cerrado ? 'cerrado' : 'abierto', direccion, fechaInicio: aFecha(f[iIni]) ?? '', ...(cerrado ? { fechaCierre: fin, precioSalida: salida } : {}),
-      precioEntrada: entrada, moneda, apalancamiento: lev, ...(btc != null ? { btcGanadoManual: btc } : {}),
+      precioEntrada: entrada, moneda, ...(lev != null ? { apalancamiento: lev } : {}),
+      ...(pct != null ? { pctManual: Math.round(pct * 1e6) / 1e6 } : {}), ...(btc != null ? { btcGanadoManual: btc } : {}),
     })
     if (r.success) trades.push(r.data)
-    else errores.push({ fila: i + 1, motivo: r.error.issues[0].message })
+    else errores.push({ fila: n, motivo: r.error.issues[0].message })
   }
-  return { trades, errores, apalancamiento: levCab ?? levFila }
+  return { trades, errores, apalancamiento: levCab ?? levFila, hayHistorico: iHist >= 0, desajustes }
 }
 
-export const leerArchivoTrades = (buf: ArrayBuffer, moneda: Moneda, op?: Opciones): ResultadoTrades => leerArchivoCon(buf, (filas) => filasATrades(filas, moneda, op))
+export const leerArchivoTrades = (buf: ArrayBuffer, moneda: Moneda): ResultadoTrades => leerArchivoCon(buf, (filas) => filasATrades(filas, moneda))

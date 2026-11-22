@@ -67,7 +67,7 @@ export interface ResumenAvisos {
   ultimaCompra: string | null
   anioAnterior: { anio: number; ganancia: number; ventas: number } | null
   /** Trades abiertos (máx. 20) para los avisos de trading: el job calcula el % con el precio del momento. */
-  tradesAbiertos?: { id: string; direccion: 'largo' | 'corto'; apalancamiento: number; precioEntrada: number; moneda: Moneda; fechaInicio: string; comisiones?: number }[]
+  tradesAbiertos?: { id: string; direccion: 'largo' | 'corto'; apalancamiento?: number; precioEntrada: number; moneda: Moneda; fechaInicio: string; comisiones?: number }[]
   mesAnterior: { mes: string; metido: number; medioAntes: number; medioDespues: number; rentabilidad: number } | null
 }
 

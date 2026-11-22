@@ -355,3 +355,23 @@ describe('hora opcional en operaciones y trades', () => {
     await assertFails(setDoc(doc(beto(), 'users/ana/operaciones/o9'), op({ hora: '10:00' })))
   })
 })
+
+describe('trades: apalancamiento opcional y % a mano', () => {
+  const base = (extra: Record<string, unknown> = {}) => ({ estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-03-01', fechaCierre: '2025-03-04', precioEntrada: 80000, precioSalida: 82520, moneda: 'USD', creado: serverTimestamp(), ...extra })
+  let k = 0
+  const crear = (d: Record<string, unknown>) => setDoc(doc(ana(), `users/ana/trades/c${k++}`), d)
+  it('sin apalancamiento vale; con él, entre 1 y 125', async () => {
+    await assertSucceeds(crear(base()))
+    await assertSucceeds(crear(base({ apalancamiento: 3 })))
+    await assertFails(crear(base({ apalancamiento: 0 })))
+    await assertFails(crear(base({ apalancamiento: 200 })))
+    await assertFails(crear(base({ apalancamiento: '5' })))
+  })
+  it('% a mano: número en un rango razonable', async () => {
+    await assertSucceeds(crear(base({ pctManual: 15.35 })))
+    await assertSucceeds(crear(base({ pctManual: -42.5, btcGanadoManual: -0.0011 })))
+    await assertFails(crear(base({ pctManual: 100000 })))
+    await assertFails(crear(base({ pctManual: -100000 })))
+    await assertFails(crear(base({ pctManual: '15' })))
+  })
+})

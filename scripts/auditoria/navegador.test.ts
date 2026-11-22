@@ -317,12 +317,11 @@ describe(`auditoría en navegador (${NOMBRE})`, () => {
     comparar('Trading', 'Neto = ganado − perdido (BTC)', v[2], k.neto, 8)
     comparar('Trading', 'Neto × precio actual (€)', v[3], k.netoValor, 2)
     const res = (await sec('Resumen de trading').innerText()).replace(/\s+/g, ' ')
-    expect(res).not.toMatch(/en total/) // el % total está oculto hasta calibrar con el Excel real
     comparar('Trading', 'Neto del resumen (BTC)', res.match(/Neto ([−+-]?[\d,]+) BTC/)![1], k.neto, 8)
     comparar('Trading', 'Valor del neto del resumen (€)', res.match(/BTC · ([−+-]?[\d.,]+) €/)![1], k.netoValor, 2)
+    comparar('Trading', 'Media por trade %', res.match(/([▲▼■] [−+-]?[\d.,]+ %) Media por trade/)![1], k.pctMedia.mul(100), 2)
     const chips = (await page.locator('.chips .chip').allInnerTexts()).join(' | ').replace(/\s+/g, ' ')
     comparar('Trading', '% de ganadores', chips.match(/GANADORES ([\d.,]+ %)/i)![1], k.pctGanadores.mul(100), 0)
-    comparar('Trading', 'Ganancia media %', chips.match(/GANANCIA MEDIA ([−+-]?[\d.,]+ %)/i)![1], k.gananciaMedia.mul(100), 2)
     comparar('Trading', 'Duración media (d)', chips.match(/DURACIÓN MEDIA ([\d,]+) d/i)![1], k.duracionMedia, 1)
     // Detalle de un trade (el primero de la lista es el abierto más reciente; se abre el último cerrado)
     const cerrados = k.filas

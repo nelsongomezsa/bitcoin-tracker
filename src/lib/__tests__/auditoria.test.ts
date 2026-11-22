@@ -393,10 +393,6 @@ describe('formato mostrado en pantalla', () => {
 
 // ───────────── Trading ─────────────
 describe('trading frente a la calculadora de control', () => {
-  it('% total sobre capital inicial (preparado) coincide con el control', () => {
-    expect(T.pctTotalSobreCapital(0.035, 0.5)).toBeCloseTo(K.pctTotalCtl(0.035, 0.5).toNumber(), 12)
-    expect(K.pctTotalCtl(0.035, 0)).toBeNull()
-  })
 
   const PR = { EUR: 91234.5, USD: 99876.25, AUD: 151000.75 }
   const base = (o: Partial<T.Trade>): T.Trade => ({ id: 'x', estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-01-01', fechaCierre: '2025-01-02', precioEntrada: 100, precioSalida: 110, moneda: 'USD', apalancamiento: 1, ...o })
@@ -408,7 +404,7 @@ describe('trading frente a la calculadora de control', () => {
     const k = K.totalesTradingCtl(trades, PR, vista)
     ok(a.ganado, k.ganado, BTC, 'ganado'); ok(a.perdido, k.perdido, BTC, 'perdido'); ok(a.neto, k.neto, BTC, 'neto')
     ok(a.netoValor, k.netoValor, EUR, 'neto × precio'); ok(a.abiertos, k.abiertos, BTC, 'abiertos')
-    pp(a.gananciaMedia, k.gananciaMedia, `${etiqueta} media`); pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
+    pp(a.pctMedia, k.pctMedia, `${etiqueta} media por trade`); pp(a.sumaPct, k.sumaPct, `${etiqueta} suma de %`); c += 1; pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
     ok(a.duracionMediaDias, k.duracionMedia, 1e-9, 'duración'); ok(a.racha, k.racha, 0, 'racha')
     if (k.mejor) { pp(a.mejor!.calculo.pct, k.mejor, `${etiqueta} mejor`); pp(a.peor!.calculo.pct, k.peor, `${etiqueta} peor`); c += 2 }
     const filas = T.filasTrades(trades, PR, vista).filter((f) => !f.calculo.abierto)
@@ -432,8 +428,12 @@ describe('trading frente a la calculadora de control', () => {
       a, base({ id: 'b', direccion: 'corto', precioEntrada: 100, precioSalida: 90, margenBTC: 0.2, apalancamiento: 3 }),
       base({ id: 'c', direccion: 'corto', precioEntrada: 100, precioSalida: 120, margenBTC: 0.1, apalancamiento: 2, comisiones: 0.1 }),
       base({ id: 'd', btcGanadoManual: -0.0031, margenBTC: 0.5 }), base({ id: 'e', margenBTC: undefined }),
+      base({ id: 'g', pctManual: 15.35, margenBTC: 0.05, apalancamiento: 5 }), base({ id: 'h', pctManual: -4.2, btcGanadoManual: -0.0011, apalancamiento: undefined }),
       base({ id: 'f', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined, moneda: 'EUR', precioEntrada: 90000, margenBTC: 0.1, apalancamiento: 10 }),
     ]
+    // el % escrito a mano manda sobre el cálculo; sin apalancamiento se calcula como x1
+    expect(T.calcularTrade(base({ pctManual: 15.35, apalancamiento: 5, margenBTC: 0.05 }), 0)).toMatchObject({ pct: 0.1535, btc: 0.05 * 0.1535, pctManual: true })
+    expect(T.calcularTrade(base({ apalancamiento: undefined, precioEntrada: 100, precioSalida: 110 }), 0).pct).toBeCloseTo(0.1, 12)
     for (const vista of ['EUR', 'USD', 'AUD'] as const) expect(comparar(lote, vista, `fijo ${vista}`)).toBeGreaterThan(20)
   })
 
@@ -443,7 +443,8 @@ describe('trading frente a la calculadora de control', () => {
       direccion: fc.constantFrom('largo', 'corto'),
       ini: fc.integer({ min: 0, max: 300 }), dur: fc.integer({ min: 0, max: 40 }),
       entrada: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100), salida: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100),
-      moneda: fc.constantFrom('EUR', 'USD', 'AUD'), lev: fc.constantFrom(1, 2, 3, 5, 10, 25, 125),
+      moneda: fc.constantFrom('EUR', 'USD', 'AUD'), lev: fc.option(fc.constantFrom(1, 2, 3, 5, 10, 25, 125), { nil: undefined }),
+      pctm: fc.option(fc.integer({ min: -9000, max: 30000 }).map((n) => n / 100), { nil: undefined }),
       margen: fc.option(fc.integer({ min: 1, max: 500_000 }).map((n) => n / 1e6), { nil: undefined }),
       com: fc.option(fc.integer({ min: 0, max: 300 }).map((n) => n / 100), { nil: undefined }),
       manual: fc.option(fc.integer({ min: -50_000, max: 50_000 }).map((n) => n / 1e6), { nil: undefined }),
@@ -453,7 +454,7 @@ describe('trading frente a la calculadora de control', () => {
       const trades: T.Trade[] = xs.map((x, i) => ({
         id: `t${i}`, estado: x.estado as T.EstadoTrade, direccion: x.direccion as T.Direccion, fechaInicio: dia(x.ini),
         ...(x.estado === 'cerrado' ? { fechaCierre: dia(x.ini + x.dur), precioSalida: x.salida } : {}),
-        precioEntrada: x.entrada, moneda: x.moneda as A.Moneda, apalancamiento: x.lev,
+        precioEntrada: x.entrada, moneda: x.moneda as A.Moneda, ...(x.lev != null ? { apalancamiento: x.lev } : {}), ...(x.pctm != null ? { pctManual: x.pctm } : {}),
         ...(x.margen != null ? { margenBTC: x.margen } : {}), ...(x.com != null ? { comisiones: x.com } : {}), ...(x.manual != null ? { btcGanadoManual: x.manual } : {}),
       }))
       comparar(trades, vista as A.Moneda, 'aleatorio')

@@ -67,14 +67,15 @@ service cloud.firestore {
       match /trades/{tradeId} {
         function precioOk(p) { return esNumero(p) && p > 0 && p < 100000000; }
         function tradeValido(d) {
-          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'btcGanadoManual', 'plataforma', 'nota', 'horaInicio', 'horaCierre', 'creado', 'editado'])
-            && d.keys().hasAll(['estado', 'direccion', 'fechaInicio', 'precioEntrada', 'moneda', 'apalancamiento', 'creado'])
+          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'pctManual', 'btcGanadoManual', 'plataforma', 'nota', 'horaInicio', 'horaCierre', 'creado', 'editado'])
+            && d.keys().hasAll(['estado', 'direccion', 'fechaInicio', 'precioEntrada', 'moneda', 'creado'])
             && d.estado in ['abierto', 'cerrado']
             && d.direccion in ['largo', 'corto']
             && fechaValida(d.fechaInicio)
             && precioOk(d.precioEntrada)
             && esMoneda(d.moneda)
-            && esNumero(d.apalancamiento) && d.apalancamiento >= 1 && d.apalancamiento <= 125
+            && (!('apalancamiento' in d) || (esNumero(d.apalancamiento) && d.apalancamiento >= 1 && d.apalancamiento <= 125))
+            && (!('pctManual' in d) || (esNumero(d.pctManual) && d.pctManual > -100000 && d.pctManual < 100000))
             && (d.estado == 'abierto' || ('fechaCierre' in d && 'precioSalida' in d))
             && (!('fechaCierre' in d) || (fechaValida(d.fechaCierre) && d.fechaCierre >= d.fechaInicio))
             && (!('precioSalida' in d) || precioOk(d.precioSalida))

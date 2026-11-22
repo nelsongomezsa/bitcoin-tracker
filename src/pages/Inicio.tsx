@@ -13,7 +13,7 @@ import { InicioEsqueleto } from '../components/Esqueleto'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
 import { btcConSigno, claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
-import { filasTrades } from '../lib/trading'
+import { etiquetaTrade, filasTrades } from '../lib/trading'
 import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
 
 const minutosDesde = (d: Date) => {
@@ -152,7 +152,7 @@ export default function Inicio() {
             <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0, gap: 8 }}>
               {ultimosTrades.map((f) => (
                 <li key={f.trade.id} className="row between">
-                  <span>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento} <span className="muted num" style={{ fontSize: 13 }}>{fechaCorta(f.trade.fechaCierre ?? f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ''}</span></span>
+                  <span>{etiquetaTrade(f.trade)} <span className="muted num" style={{ fontSize: 13 }}>{fechaCorta(f.trade.fechaCierre ?? f.trade.fechaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ''}</span></span>
                   <span className={`num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}{f.calculo.btc != null && !v.privado ? ` · ${btcConSigno(f.calculo.btc)}` : ''}</span>
                 </li>
               ))}

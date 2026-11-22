@@ -8,7 +8,7 @@ import Sparkline from '../components/Sparkline'
 import TradeSheet from '../components/TradeSheet'
 import TradeFicha from '../components/TradeFicha'
 import TradingGraficas from '../components/TradingGraficas'
-import { filasTrades, type FilaTrade, type Trade } from '../lib/trading'
+import { etiquetaTrade, filasTrades, type FilaTrade, type Trade } from '../lib/trading'
 import { claseSigno, fechaConHora, fechaCorta, flecha, hoyISO, dinero, OCULTO } from '../lib/format'
 import { mensajeError } from '../lib/errores'
 import { MONEDAS } from '../lib/schemas'
@@ -86,6 +86,7 @@ export default function Trading() {
             <div className="muted num" style={{ fontSize: 13 }}>Vale hoy {v.$s(tot.netoValor)}</div>
             {!v.privado && curva.length > 1 && <Sparkline valores={curva} etiqueta="BTC ganados acumulados, trade a trade" />}
             <div className={`mid num ${claseSigno(tot.neto)}`} style={{ fontSize: 15 }}>{flecha(tot.neto)} Neto {v.btcS(tot.neto)} · {v.$s(tot.netoValor)}</div>
+            <div className={`num ${claseSigno(tot.pctMedia)}`} style={{ fontSize: 15 }} aria-label="Media por trade">{flecha(tot.pctMedia)} {v.pct(tot.pctMedia)} <span className="muted" style={{ fontSize: 13 }}>Media por trade</span></div>
           </section>
 
           <div className="chips" aria-label="Resumen de trades">
@@ -94,7 +95,6 @@ export default function Trading() {
             {tot.mejor && <div className="chip"><span className="k">Mejor trade</span><span className="v gain">▲ {v.pct(tot.mejor.calculo.pct)}</span></div>}
             {tot.peor && tot.peor.calculo.pct < 0 && <div className="chip"><span className="k">Peor trade</span><span className="v loss">▼ {v.pct(tot.peor.calculo.pct)}</span></div>}
             <div className="chip"><span className="k">Racha</span><span className={`v ${claseSigno(tot.racha)}`}>{oculto(tot.racha === 0 ? '—' : `${tot.racha > 0 ? '▲' : '▼'} ${Math.abs(tot.racha)} ${tot.racha > 0 ? 'ganados' : 'perdidos'}`)}</span></div>
-            <div className="chip"><span className="k">Ganancia media</span><span className={`v ${claseSigno(tot.gananciaMedia)}`}>{v.pct(tot.gananciaMedia)}</span></div>
             <div className="chip"><span className="k">Duración media</span><span className="v">{tot.duracionMediaDias.toFixed(1).replace('.', ',')} d</span></div>
           </div>
 
@@ -127,8 +127,8 @@ export default function Trading() {
                 <thead><tr><th scope="col">Dirección y fechas</th><th scope="col" className="r">Entrada → salida</th><th scope="col" className="r">% y BTC</th></tr></thead>
                 <tbody>
                   {lista.map((f) => (
-                    <tr key={f.trade.id} tabIndex={0} onClick={() => setFicha(f)} onKeyDown={(e) => { if (e.key === 'Enter') setFicha(f) }} aria-label={`Trade ${f.trade.direccion} x${f.trade.apalancamiento} del ${fechaCorta(f.trade.fechaInicio)}`}>
-                      <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
+                    <tr key={f.trade.id} tabIndex={0} onClick={() => setFicha(f)} onKeyDown={(e) => { if (e.key === 'Enter') setFicha(f) }} aria-label={`Trade ${etiquetaTrade(f.trade)} del ${fechaCorta(f.trade.fechaInicio)}`}>
+                      <td><b>{etiquetaTrade(f.trade)}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
                       <td className="r num">{dinero(f.trade.precioEntrada, f.trade.moneda, 0)}<div className="pro-et">{dinero(f.calculo.precioReferencia, f.trade.moneda, 0)}{f.calculo.abierto ? ' (hoy)' : ''}</div></td>
                       <td className={`r num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}<div>{f.calculo.btc == null ? '—' : v.btcS(f.calculo.btc)}</div></td>
                     </tr>
@@ -141,9 +141,9 @@ export default function Trading() {
                 const t = f.trade, c = f.calculo
                 return (
                   <li key={t.id}>
-                    <button className="card stack trade-fila" style={{ width: '100%', textAlign: 'left' }} onClick={() => setFicha(f)} aria-label={`Trade ${t.direccion} x${t.apalancamiento} del ${fechaCorta(t.fechaInicio)}`}>
+                    <button className="card stack trade-fila" style={{ width: '100%', textAlign: 'left' }} onClick={() => setFicha(f)} aria-label={`Trade ${etiquetaTrade(t)} del ${fechaCorta(t.fechaInicio)}`}>
                       <div className="row between">
-                        <b>{t.direccion === 'largo' ? 'Largo' : 'Corto'} x{t.apalancamiento}{c.abierto && <span className="notice" style={{ marginLeft: 8 }}>sin cerrar</span>}</b>
+                        <b>{etiquetaTrade(t)}{c.abierto && <span className="notice" style={{ marginLeft: 8 }}>sin cerrar</span>}</b>
                         <span className={`num ${claseSigno(c.pct)}`}>{flecha(c.pct)} {v.pct(c.pct)}</span>
                       </div>
                       <div className="muted num" style={{ fontSize: 13 }}>

@@ -215,16 +215,16 @@ export function evaluarFrecuentes(ctx, u, est) {
   for (const t of r?.tradesAbiertos ?? []) {
     if (td.activo) {
       const dias = Math.floor((ahora - Date.parse(`${t.fechaInicio}T00:00:00Z`)) / (24 * H))
-      if (dias > (td.umbral ?? 7)) out.push(mk(`tradeDias:${t.id}`, 'Trade abierto', `Tu trade ${t.direccion} x${t.apalancamiento} lleva ${num(dias)} días abierto.`, { prioridad: td.prioridad, canales: td.canales, url: '/trading', cooldownMs: 3 * 24 * H }))
+      if (dias > (td.umbral ?? 7)) out.push(mk(`tradeDias:${t.id}`, 'Trade abierto', `Tu trade ${t.direccion}${t.apalancamiento ? ` x${t.apalancamiento}` : ''} lleva ${num(dias)} días abierto.`, { prioridad: td.prioridad, canales: td.canales, url: '/trading', cooldownMs: 3 * 24 * H }))
     }
     const pe = ctx.precios[t.moneda]
     if (tp.activo && pe > 0 && t.precioEntrada > 0) {
       const mov = ((pe - t.precioEntrada) / t.precioEntrada) * (t.direccion === 'corto' ? -1 : 1)
-      const p = mov * t.apalancamiento - (t.comisiones ?? 0) / 100
+      const p = mov * (t.apalancamiento ?? 1) - (t.comisiones ?? 0) / 100
       const umbral = (tp.umbral ?? 10) / 100
       const gana = p >= umbral && tp.direccion !== 'perdida'
       const pierde = p <= -umbral && tp.direccion !== 'ganancia'
-      if (gana || pierde) out.push(mk(`tradePct:${t.id}:${gana ? 'sube' : 'baja'}`, 'Trade abierto', `Tu trade ${t.direccion} x${t.apalancamiento} va en ${pctSigno(p)} (sin cerrar).`, { prioridad: tp.prioridad, canales: tp.canales, url: '/trading', cooldownMs: 12 * H }))
+      if (gana || pierde) out.push(mk(`tradePct:${t.id}:${gana ? 'sube' : 'baja'}`, 'Trade abierto', `Tu trade ${t.direccion}${t.apalancamiento ? ` x${t.apalancamiento}` : ''} va en ${pctSigno(p)} (sin cerrar).`, { prioridad: tp.prioridad, canales: tp.canales, url: '/trading', cooldownMs: 12 * H }))
     }
   }
 

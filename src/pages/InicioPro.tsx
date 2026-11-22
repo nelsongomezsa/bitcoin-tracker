@@ -11,7 +11,7 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
 import { btcDeCompra, btcDeVenta, calcularFifo, estadoNiveles, filaCompra, ordenarPorFecha, progresoDca, type Operacion } from '../lib/calculos'
-import { filasTrades } from '../lib/trading'
+import { etiquetaTrade, filasTrades } from '../lib/trading'
 import { btc as fBtc, btcConSigno, claseSigno, dinero, fechaConHora, fechaCorta, flecha, hoyISO, OCULTO } from '../lib/format'
 import type { Temporalidad } from '../lib/velas'
 
@@ -133,7 +133,7 @@ export default function InicioPro() {
               <tbody>
                 {trades.map((f) => (
                   <tr key={f.trade.id}>
-                    <td><b>{f.trade.direccion === 'largo' ? 'Largo' : 'Corto'} x{f.trade.apalancamiento}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
+                    <td><b>{etiquetaTrade(f.trade)}</b><div className="pro-et num">{fechaConHora(f.trade.fechaInicio, f.trade.horaInicio)}{f.calculo.abierto ? ' · sin cerrar' : ` → ${fechaConHora(f.trade.fechaCierre!, f.trade.horaCierre)}`}</div></td>
                     <td className="r num">{dinero(f.trade.precioEntrada, f.trade.moneda, 0)}<div className="pro-et">{dinero(f.calculo.precioReferencia, f.trade.moneda, 0)}{f.calculo.abierto ? ' (hoy)' : ''}</div></td>
                     <td className={`r num ${claseSigno(f.calculo.pct)}`}>{flecha(f.calculo.pct)} {v.pct(f.calculo.pct)}<div>{f.calculo.btc == null ? '—' : oculto(btcConSigno(f.calculo.btc))}</div></td>
                   </tr>

@@ -301,13 +301,14 @@ export const nombreZona = ['Miedo extremo', 'Miedo', 'Neutral', 'Codicia', 'Codi
 export const caidaPuntos = (referencia, valor, umbral) => referencia - valor >= umbral
 
 // ───────────── Trading ─────────────
-/** Un trade: {estado, direccion, fechaInicio, fechaCierre, precioEntrada, precioSalida, apalancamiento, margenBTC, comisiones(%), btcGanadoManual}. */
+/** Un trade: {estado, direccion, fechaInicio, fechaCierre, precioEntrada, precioSalida, apalancamiento (opcional), margenBTC, comisiones(%), pctManual(%), btcGanadoManual}. */
 export function tradeCtl(t, precioActual) {
   const abierto = t.estado === 'abierto' || t.precioSalida == null
   const ref = D(abierto ? precioActual : t.precioSalida)
   const signoDir = t.direccion === 'corto' ? D(-1) : D(1)
   const mov = ref.minus(t.precioEntrada).div(t.precioEntrada).mul(signoDir)
-  const pct = mov.mul(t.apalancamiento ?? 1).minus(D(t.comisiones ?? 0).div(100))
+  const auto = mov.mul(t.apalancamiento ?? 1).minus(D(t.comisiones ?? 0).div(100))
+  const pct = t.pctManual != null ? D(t.pctManual).div(100) : auto // el % escrito a mano manda sobre el cálculo
   const btc = t.btcGanadoManual != null ? D(t.btcGanadoManual) : t.margenBTC != null ? D(t.margenBTC).mul(pct) : null
   return { abierto, mov, pct, btc }
 }
@@ -346,11 +347,9 @@ export function totalesTradingCtl(trades, precios, vista) {
     filas, ganado, perdido, neto, netoValor: neto.mul(precios[vista]),
     abiertos: sumar(filasAb.map((f) => f.btc ?? CERO)),
     pctGanadores: n ? D(filas.filter((f) => f.pct.gt(0)).length).div(n) : CERO,
-    gananciaMedia: n ? sumar(filas.map((f) => f.pct)).div(n) : CERO,
+    sumaPct: sumar(filas.map((f) => f.pct)),
+    pctMedia: n ? sumar(filas.map((f) => f.pct)).div(n) : CERO, // media simple: «Media por trade»
     mejor: porPct[0]?.pct ?? null, peor: porPct.length ? porPct[porPct.length - 1].pct : null,
     racha, duracionMedia: n ? D(cerrados.reduce((s, t) => s + dias(t.fechaInicio, cierre(t)), 0)).div(n) : CERO,
   }
 }
-
-/** % total = neto / capital inicial (preparado; sin uso en pantalla hasta calibrar con el Excel real). */
-export const pctTotalCtl = (neto, capital) => (capital != null && D(capital).gt(0) ? D(neto).div(capital) : null)
