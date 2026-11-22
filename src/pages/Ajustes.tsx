@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/auth'
 import { useVista } from '../state/vista'
 import Sheet from '../components/Sheet'
+import Cabecera from '../components/Cabecera'
+import { Link } from 'react-router-dom'
 import { MONEDAS } from '../lib/schemas'
 import { informeFifoAnual } from '../lib/calculos'
 import { dinero, fechaCorta } from '../lib/format'
@@ -83,7 +85,11 @@ export default function Ajustes() {
 
   return (
     <main className="app stack">
-      <h1>Ajustes</h1>
+      <Cabecera titulo="Ajustes" />
+      <section className="card stack" aria-label="Accesos">
+        <Link className="btn" to="/avisos">Avisos y notificaciones</Link>
+        <Link className="btn" to="/operaciones">Todas mis operaciones</Link>
+      </section>
       {msg && <p role="status" className="card notice">{msg}</p>}
 
       <section className="card stack" aria-label="Preferencias">

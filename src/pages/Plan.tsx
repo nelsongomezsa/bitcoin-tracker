@@ -6,6 +6,7 @@ import type { Objetivos } from '../lib/tipos'
 import { planSchema } from '../lib/schemas'
 import { dinero, hoyISO, porcentaje, btc as fBtc } from '../lib/format'
 import { mensajeError } from '../lib/errores'
+import Cabecera from '../components/Cabecera'
 
 const aNum = (s: string) => (s.trim() === '' ? NaN : Number(s.replace(',', '.')))
 const optNum = (s: string) => (s.trim() === '' ? undefined : aNum(s))
@@ -130,7 +131,7 @@ export default function Plan() {
 
   return (
     <main className="app stack">
-      <header className="row between"><h1>Plan y objetivos</h1><button onClick={abrirEdicion}>Editar</button></header>
+      <Cabecera titulo="Plan y objetivos"><button onClick={abrirEdicion}>Editar</button></Cabecera>
       <Link to="/">← Inicio</Link>
 
       <section className="card stack" aria-label="Niveles clave">

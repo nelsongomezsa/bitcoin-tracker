@@ -6,6 +6,7 @@ import type { AjusteAviso, AlertaMedida, EntradaHistorial, GeneralAvisos } from 
 import { MONEDAS } from '../lib/schemas'
 import { mensajeError } from '../lib/errores'
 import { horaCorta } from '../lib/format'
+import Cabecera from '../components/Cabecera'
 
 const esIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
 const instalada = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true
@@ -127,10 +128,9 @@ export default function Avisos() {
 
   return (
     <main className="app stack">
-      <header className="row between wrap">
-        <h1>Avisos</h1>
+      <Cabecera titulo="Avisos">
         {pausado ? <button onClick={() => void cambiarGeneral({ pausadoHasta: 0 })}>Reanudar</button> : null}
-      </header>
+      </Cabecera>
 
       <section className="card stack" aria-label="Pausa">
         {pausado ? (

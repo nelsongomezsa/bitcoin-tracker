@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useVista } from '../state/vista'
 import OperacionSheet from '../components/OperacionSheet'
+import Cabecera from '../components/Cabecera'
 import Sheet from '../components/Sheet'
 import { calcularFifo, filaCompra, ordenarPorFecha, type Operacion } from '../lib/calculos'
 import { btc, claseSigno, dinero, fechaCorta, flecha, hoyISO, porcentaje, porcentajeConSigno } from '../lib/format'
@@ -12,6 +13,7 @@ type Filtro = 'todas' | 'compra' | 'venta'
 export default function Operaciones() {
   const v = useVista()
   const [filtro, setFiltro] = useState<Filtro>('todas')
+  const [plataforma, setPlataforma] = useState('')
   const [hoja, setHoja] = useState<null | { tipo: 'compra' | 'venta'; op?: Operacion; plantilla?: boolean }>(null)
   const [borrar, setBorrar] = useState<Operacion | null>(null)
   const [error, setError] = useState('')
@@ -20,7 +22,8 @@ export default function Operaciones() {
   const ventas = useMemo(() => {
     try { return new Map(calcularFifo(v.ops).ventas.map((x) => [x.id, x])) } catch { return new Map() }
   }, [v.ops])
-  const lista = ordenarPorFecha(v.ops).filter((o) => filtro === 'todas' || o.tipo === filtro).reverse()
+  const plataformas = useMemo(() => [...new Set(v.ops.map((o) => o.plataforma).filter(Boolean))] as string[], [v.ops])
+  const lista = ordenarPorFecha(v.ops).filter((o) => (filtro === 'todas' || o.tipo === filtro) && (!plataforma || o.plataforma === plataforma)).reverse()
   const original = (id: string) => v.operaciones.find((o) => o.id === id)
 
   // Los avisos de DCA abren la app en «Duplicar última compra».
@@ -52,14 +55,21 @@ export default function Operaciones() {
   if (v.cargando) return <main className="app"><p className="muted" role="status">Cargando…</p></main>
   return (
     <main className="app stack">
-      <header className="row between wrap">
-        <h1>Operaciones</h1>
+      <Cabecera titulo="Operaciones">
         <div className="seg" role="group" aria-label="Filtro">
           {([['todas', 'Todas'], ['compra', 'Compras'], ['venta', 'Ventas']] as const).map(([k, l]) => (
             <button key={k} aria-pressed={filtro === k} onClick={() => setFiltro(k)}>{l}</button>
           ))}
         </div>
-      </header>
+      </Cabecera>
+      {plataformas.length > 0 && (
+        <label style={{ maxWidth: 240 }}>Plataforma
+          <select value={plataforma} onChange={(e) => setPlataforma(e.target.value)}>
+            <option value="">Todas</option>
+            {plataformas.map((p) => <option key={p}>{p}</option>)}
+          </select>
+        </label>
+      )}
       <div className="row">
         <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Añadir compra</button>
         <button className="btn-outline btn-big" onClick={() => setHoja({ tipo: 'venta' })}>Retirar / vender</button>

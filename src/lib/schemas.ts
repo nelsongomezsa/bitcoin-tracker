@@ -17,7 +17,7 @@ export const operacionSchema = z
     comision: z.number({ message: 'Introduce un número' }).min(0, 'La comisión no puede ser negativa'),
     precio: z.number({ message: 'Introduce un número' }).gt(0, 'El precio debe ser mayor que 0').lt(100_000_000),
     moneda: monedaSchema,
-    plataforma: z.string().trim().max(60, 'Máximo 60 caracteres').optional(),
+    plataforma: z.string().trim().max(40, 'Máximo 40 caracteres').regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
     nota: z.string().trim().max(200, 'Máximo 200 caracteres').optional(),
   })
   .refine((o) => o.comision < o.cantidad, { path: ['comision'], message: 'La comisión debe ser menor que la cantidad' })

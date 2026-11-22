@@ -104,6 +104,8 @@ export interface Datos {
   guardarAvisos: (a: AvisosDoc) => Promise<void>
   guardarPerfil: (p: Perfil) => Promise<void>
   /** Pide un aviso de prueba (el job lo envía en su siguiente pasada). */
+  /** Relee el precio desde el servidor (tirar para refrescar). */
+  refrescar: () => Promise<void>
   pedirPrueba: () => Promise<void>
   /** Crea un código de un solo uso para vincular Telegram (válido 15 minutos). */
   crearVinculo: (codigo: string) => Promise<void>

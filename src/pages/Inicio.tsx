@@ -1,20 +1,36 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Eye, EyeOff, Pencil } from 'lucide-react'
 import { useVista } from '../state/vista'
 import PrecioChart from '../components/PrecioChart'
 import OperacionSheet from '../components/OperacionSheet'
+import Cabecera from '../components/Cabecera'
+import Contador from '../components/Contador'
+import PrecioVivo from '../components/PrecioVivo'
+import Sparkline from '../components/Sparkline'
+import { InicioEsqueleto } from '../components/Esqueleto'
+import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
-import { claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta } from '../lib/format'
-import { convertir, estadoNiveles, filaCompra, ordenarPorFecha, proximoNivel, type Operacion } from '../lib/calculos'
+import { claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
+import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
+
+const nf = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function Inicio() {
   const v = useVista()
   const [hoja, setHoja] = useState<null | { tipo: 'compra' | 'venta'; op?: Operacion }>(null)
-  if (v.cargando) return <main className="app"><p className="muted" role="status">Cargando…</p></main>
-
+  const { dist, refrescando } = useTirarRefrescar(v.refrescar)
   const { res, precio, precios, moneda } = v
-  const ultimas = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).slice(-5).reverse()
   const factor = precios ? precios[moneda] / precios.EUR : 1
+
+  const spark = useMemo(() => {
+    const h = v.historico.slice(-8).map((p) => ({ ...p, precio: p.precio * factor }))
+    try { return serieCartera(v.ops, h).map((p) => p.valor) } catch { return [] }
+  }, [v.historico, v.ops, factor])
+
+  if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
+
+  const ultimas = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).slice(-5).reverse()
   const nivel = res ? proximoNivel(v.plan, v.operaciones, v.precios?.EUR ?? 0) : null
   const nivelEnMoneda = nivel ? nivel.precio * factor : undefined
   const ath = v.mercado?.maximoHistorico[moneda]
@@ -22,41 +38,57 @@ export default function Inicio() {
   const comisionAlta = res && res.pctComisiones > 0.03
   const otras = MONEDAS.filter((m) => m !== moneda)
   const sinOps = v.operaciones.length === 0
-  const hayNiveles = estadoNiveles(v.plan, v.operaciones).length > 0
+  const oculto = (s: string) => (v.privado ? OCULTO : s)
 
   return (
     <main className="app stack">
-      <header className="row between wrap">
-        <h1>Inicio</h1>
-        <div className="row">
-          <div className="seg" role="group" aria-label="Moneda">
-            {MONEDAS.map((m) => <button key={m} aria-pressed={moneda === m} onClick={() => v.setMoneda(m)}>{m}</button>)}
-          </div>
-          <button aria-label={v.privado ? 'Mostrar cifras' : 'Ocultar cifras'} aria-pressed={v.privado} onClick={() => void v.togglePrivado()}>{v.privado ? '🙈' : '👁'}</button>
+      <Cabecera titulo="Inicio">
+        <div className="seg" role="group" aria-label="Moneda">
+          {MONEDAS.map((m) => <button key={m} aria-pressed={moneda === m} onClick={() => v.setMoneda(m)}>{m}</button>)}
         </div>
-      </header>
+        <button aria-label={v.privado ? 'Mostrar cifras' : 'Ocultar cifras'} aria-pressed={v.privado} onClick={() => void v.togglePrivado()}>
+          {v.privado ? <EyeOff size={20} strokeWidth={1.75} /> : <Eye size={20} strokeWidth={1.75} />}
+        </button>
+      </Cabecera>
+
+      <div className="ptr" style={{ height: refrescando ? 28 : dist }} aria-live="polite">{refrescando ? 'Actualizando…' : dist >= 60 ? 'Suelta para actualizar' : dist > 8 ? 'Tira para actualizar' : ''}</div>
 
       {v.errorFifo && <p className="card err" role="alert">Tus operaciones no cuadran: hay ventas con más BTC del que había. Revisa la lista.</p>}
 
-      <section className="card stack" aria-label="Saldo">
+      <section className="card saldo stack" aria-label="Saldo">
+        <div className="aura" aria-hidden="true" />
         <h3>Valor actual</h3>
-        <div className="big">{res ? v.$(res.valorHoy) : '—'}</div>
-        <div className="muted num">
+        <div className="big">{res ? (v.privado ? OCULTO : <Contador valor={`${nf.format(res.valorHoy)} ${moneda === 'EUR' ? '€' : moneda === 'USD' ? '$' : 'A$'}`} />) : '—'}</div>
+        <div className="muted num" style={{ fontSize: 13 }}>
           {otras.map((m, i) => (
-            <span key={m}>{i > 0 && ' · '}{v.privado ? '••••' : dinero(convertir(res?.valorHoy ?? 0, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
+            <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir(res?.valorHoy ?? 0, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
           ))}
         </div>
         {res && (
-          <div className={`mid ${claseSigno(res.ganancia)}`}>
-            {flecha(res.ganancia)} {v.$s(res.ganancia)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.rentabilidad)})</span>
+          <div className="row between" style={{ alignItems: 'flex-end' }}>
+            <div className={`mid ${claseSigno(res.ganancia)}`}>
+              {flecha(res.ganancia)} {v.$s(res.ganancia)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.rentabilidad)})</span>
+            </div>
+            {!v.privado && <Sparkline valores={spark} />}
           </div>
         )}
         <div className="grid2">
-          <div className="stat"><span className="muted">Metido</span><span className="num">{res ? v.$(res.invertido) : '—'}</span></div>
-          <div className="stat"><span className="muted">Precio de BTC</span><span className="num">{precio ? dinero(precio, moneda, 0) : '—'}</span></div>
+          <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Metido</span><span className="num">{res ? v.$(res.invertido) : '—'}</span></div>
+          <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Precio de BTC</span>{precio ? <PrecioVivo valor={precio} texto={dinero(precio, moneda, 0)} /> : <span className="num">—</span>}</div>
         </div>
         {v.mercado?.actualizado && <p className="notice">Precio actualizado {horaCorta(v.mercado.actualizado)}</p>}
       </section>
+
+      <div className="chips" aria-label="Resumen del mercado">
+        {res && res.btc > 0 && <div className="chip"><span className="k">Precio medio</span><span className="v warn">{v.$(res.precioMedioReal)}</span></div>}
+        {res && res.btc > 0 && (
+          <div className="chip"><span className="k">Rentable desde</span>
+            <span className="v">{res.subidaParaRentable > 0 ? `+${oculto(porcentaje(res.subidaParaRentable))}` : <span className="gain">▲ ya</span>}</span></div>
+        )}
+        {nivel && <div className="chip"><span className="k">Próximo nivel</span><span className="v key">{dinero(nivelEnMoneda ?? 0, moneda, 0)}</span></div>}
+        {fg && <div className="chip"><span className="k">Miedo y codicia</span><span className="v">{fg.valor} · {fg.clasificacion}</span></div>}
+        {ath ? <div className="chip"><span className="k">Del máximo</span><span className="v loss">▼ {porcentaje(1 - precio / ath)}</span></div> : null}
+      </div>
 
       <div className="row">
         <button className="btn-primary btn-big" onClick={() => setHoja({ tipo: 'compra' })}>Añadir compra</button>
@@ -82,7 +114,7 @@ export default function Inicio() {
                       <td className="num">{v.$(f.cantidad)}</td>
                       <td className="num">{v.$(f.valorHoy)}</td>
                       <td className={`num ${claseSigno(f.rentabilidad)}`}>{v.privado ? '••••' : `${flecha(f.rentabilidad)} ${porcentajeConSigno(f.rentabilidad, 1)}`}</td>
-                      <td><button className="btn-ghost" aria-label={`Editar compra del ${fechaCorta(o.fecha)}`} onClick={() => setHoja({ tipo: 'compra', op: v.operaciones.find((x) => x.id === o.id) })}>✎</button></td>
+                      <td><button className="btn-ghost" aria-label={`Editar compra del ${fechaCorta(o.fecha)}`} onClick={() => setHoja({ tipo: 'compra', op: v.operaciones.find((x) => x.id === o.id) })}><Pencil size={16} strokeWidth={1.75} /></button></td>
                     </tr>
                   )
                 })}
@@ -101,23 +133,12 @@ export default function Inicio() {
         )}
       </section>
 
-      <section className="card stack" aria-label="Hoy en el mercado">
-        <h2>Hoy en el mercado</h2>
-        {res && res.btc > 0 && (
-          <p>Rentable desde <b className="num warn">{v.$(res.precioMedioReal)}</b>
-            {res.subidaParaRentable > 0 ? <> · falta una subida del <span className="num">{v.privado ? '••••' : porcentaje(res.subidaParaRentable)}</span></> : <> · <span className="gain">▲ ya por encima</span></>}
-          </p>
-        )}
-        {nivel && <p>Próximo nivel clave: <b className="num key">{dinero(nivel.precio * factor, moneda, 0)}</b> · tendría que bajar un <span className="num">{porcentaje(nivel.bajadaNecesaria)}</span></p>}
-        {!hayNiveles && <p className="muted">Aún no has definido niveles clave en el plan.</p>}
-        {ath ? <p>Máximo histórico: <span className="num">{dinero(ath, moneda, 0)}</span> · el precio está un <span className="num">{porcentaje(1 - precio / ath)}</span> por debajo</p> : null}
-        {fg && <p>Miedo y codicia: <span className="num">{fg.valor}</span> ({fg.clasificacion})</p>}
-        {comisionAlta && res && <p className="warn">Has pagado el {porcentaje(res.pctComisiones)} de lo metido en comisiones.</p>}
-        <p className="notice">Información de mercado, no una recomendación de inversión.</p>
-      </section>
-
-      <Link className="btn" to="/calculadoras">Calculadoras</Link>
-      <Link className="btn" to="/plan">Plan y objetivos</Link>
+      {comisionAlta && res && <p className="warn">Has pagado el {porcentaje(res.pctComisiones)} de lo metido en comisiones.</p>}
+      <div className="row wrap">
+        <Link className="btn" to="/calculadoras">Calculadoras</Link>
+        <Link className="btn" to="/plan">Plan y objetivos</Link>
+      </div>
+      <p className="notice">Información de mercado, no una recomendación de inversión.</p>
 
       {hoja && <OperacionSheet tipo={hoja.tipo} inicial={hoja.op} onCerrar={() => setHoja(null)} />}
     </main>

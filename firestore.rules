@@ -48,7 +48,7 @@ service cloud.firestore {
             && esNumero(d.comision) && d.comision >= 0 && d.comision < d.cantidad
             && esNumero(d.precio) && d.precio > 0 && d.precio < 100000000
             && esMoneda(d.moneda)
-            && (!('plataforma' in d) || textoMax(d.plataforma, 60))
+            && (!('plataforma' in d) || textoMax(d.plataforma, 40))
             && (!('nota' in d) || textoMax(d.nota, 200))
             && d.creado is timestamp
             && (!('editado' in d) || d.editado is timestamp);

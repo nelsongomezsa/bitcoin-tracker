@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  addDoc, collection, deleteDoc, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
+  addDoc, collection, deleteDoc, doc, getDocFromServer, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from './auth'
@@ -52,6 +52,7 @@ function DemoProvider({ children }: { children: ReactNode }) {
     },
     guardarAvisos: async (a) => setAvisos(a),
     guardarPerfil: async (p) => setPerfil(p),
+    refrescar: async () => { await new Promise((r) => setTimeout(r, 600)) },
     pedirPrueba: async () => undefined,
     crearVinculo: async () => undefined,
     suscribirHistorial: (cb) => {
@@ -166,6 +167,9 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
       if (!db) return
       const v = perfilSchema.parse(p)
       await setDoc(doc(db, `users/${uid}`), v, { merge: true })
+    },
+    refrescar: async () => {
+      if (db) await getDocFromServer(doc(db, 'mercado/precio')) // actualiza la caché y dispara el listener
     },
     pedirPrueba: async () => {
       if (db) await setDoc(doc(db, `users/${uid}/avisos/prueba`), { ts: serverTimestamp() })

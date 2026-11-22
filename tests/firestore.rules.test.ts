@@ -99,6 +99,10 @@ describe('validación de operaciones', () => {
     await assertFails(crear({ fecha: '10/01/2025' }))
     await assertFails(crear({ fecha: Timestamp.now() }))
   })
+  it('plataforma ≤ 40 caracteres', async () => {
+    await assertSucceeds(crear({ plataforma: 'x'.repeat(40) }))
+    await assertFails(crear({ plataforma: 'x'.repeat(41) }))
+  })
   it('nota ≤ 200, tipo y moneda cerrados', async () => {
     await assertFails(crear({ nota: 'x'.repeat(201) }))
     await assertSucceeds(crear({ nota: 'x'.repeat(200) }))

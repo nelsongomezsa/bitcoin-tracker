@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useVista } from '../state/vista'
 import { bajarMedia, escenarioPrecio, siVendoHoy, VentaExcedidaError } from '../lib/calculos'
+import Cabecera from '../components/Cabecera'
 import { btc as fBtc, claseSigno, dinero, flecha } from '../lib/format'
 
 const aNum = (s: string) => (s.trim() === '' ? NaN : Number(s.replace(',', '.')))
@@ -39,7 +40,7 @@ export default function Calculadoras() {
 
   return (
     <main className="app stack">
-      <header className="row between"><h1>Calculadoras</h1><Link to="/">← Inicio</Link></header>
+      <Cabecera titulo="Calculadoras"><Link to="/">← Inicio</Link></Cabecera>
       {!precio && <p className="card muted">Sin precio actual no se pueden hacer los cálculos.</p>}
 
       <section className="card stack" aria-label="Bajar mi media">
