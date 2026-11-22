@@ -57,7 +57,7 @@ describe('totales y detalle', () => {
     expect(x.pctGanadores).toBe(0.5)
     expect(x.mejor?.trade.id).toBe('a')
     expect(x.peor?.trade.id).toBe('b')
-    expect(x.pctTotal).toBeCloseTo(0.25, 10)
+    expect(x).not.toHaveProperty('pctTotal')
     expect(x.gananciaMedia).toBeCloseTo(0.0625, 10)
     expect(x.duracionMediaDias).toBeCloseTo((2 + 4 + 1 + 2) / 4)
   })
@@ -130,5 +130,15 @@ describe('precio histórico por día', () => {
     expect(precioEurEnFecha(h, '2025-03-03', 90000, '2025-03-03')).toBe(90000)
     expect(precioEurEnFecha(h, '2025-03-20')).toBeNull()
     expect(precioEurEnFecha([], '2025-03-02')).toBeNull()
+  })
+})
+
+import { pctTotalSobreCapital } from '../trading'
+describe('% total sobre el capital inicial (preparado)', () => {
+  it('neto / capital; null sin capital válido', () => {
+    expect(pctTotalSobreCapital(0.035, 0.5)).toBeCloseTo(0.07)
+    expect(pctTotalSobreCapital(-0.01, 0.5)).toBeCloseTo(-0.02)
+    expect(pctTotalSobreCapital(0.035, 0)).toBeNull()
+    expect(pctTotalSobreCapital(0.035, undefined)).toBeNull()
   })
 })

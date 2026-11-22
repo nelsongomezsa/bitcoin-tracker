@@ -133,8 +133,6 @@ export interface TotalesTrading {
   /** BTC de los trades abiertos (aparte, no suman al neto). */
   abiertos: number
   abiertosValor: number
-  /** Suma de los % de los trades cerrados (fracción). */
-  pctTotal: number
   pctGanadores: number
   gananciaMedia: number
   mejor: FilaTrade | null
@@ -168,7 +166,6 @@ export function totalesTrading(trades: Trade[], precios: PreciosBtc, vista: Mone
   let corrido = 0
   return {
     nCerrados: n, nAbiertos: abi.length, ganado, perdido, neto, netoValor: neto * precios[vista], abiertos, abiertosValor: abiertos * precios[vista],
-    pctTotal: pcts.reduce((s, p) => s + p, 0),
     pctGanadores: n ? pcts.filter((p) => p > 0).length / n : 0,
     gananciaMedia: n ? pcts.reduce((s, p) => s + p, 0) / n : 0,
     mejor: sorted[0] ?? null,
@@ -207,4 +204,12 @@ export function precioEurEnFecha(historico: { t: number; precio: number }[], fec
   let mejor: { t: number; precio: number } | null = null
   for (const p of historico) if (!mejor || Math.abs(p.t - objetivo) < Math.abs(mejor.t - objetivo)) mejor = p
   return mejor && Math.abs(mejor.t - objetivo) <= 2 * MS_DIA ? mejor.precio : null
+}
+
+/**
+ * % total del trading = neto / capital inicial (fracción). Preparado pero sin usar en pantalla hasta confirmarlo con el Excel real:
+ * mientras tanto el resumen enseña el neto en BTC y su valor. null si no hay un capital inicial válido.
+ */
+export function pctTotalSobreCapital(netoBtc: number, capitalInicialBtc: number | null | undefined): number | null {
+  return capitalInicialBtc != null && capitalInicialBtc > 0 ? netoBtc / capitalInicialBtc : null
 }

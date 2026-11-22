@@ -345,10 +345,12 @@ export function totalesTradingCtl(trades, precios, vista) {
   return {
     filas, ganado, perdido, neto, netoValor: neto.mul(precios[vista]),
     abiertos: sumar(filasAb.map((f) => f.btc ?? CERO)),
-    pctTotal: sumar(filas.map((f) => f.pct)),
     pctGanadores: n ? D(filas.filter((f) => f.pct.gt(0)).length).div(n) : CERO,
     gananciaMedia: n ? sumar(filas.map((f) => f.pct)).div(n) : CERO,
     mejor: porPct[0]?.pct ?? null, peor: porPct.length ? porPct[porPct.length - 1].pct : null,
     racha, duracionMedia: n ? D(cerrados.reduce((s, t) => s + dias(t.fechaInicio, cierre(t)), 0)).div(n) : CERO,
   }
 }
+
+/** % total = neto / capital inicial (preparado; sin uso en pantalla hasta calibrar con el Excel real). */
+export const pctTotalCtl = (neto, capital) => (capital != null && D(capital).gt(0) ? D(neto).div(capital) : null)

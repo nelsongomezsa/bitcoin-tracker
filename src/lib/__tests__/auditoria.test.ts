@@ -393,6 +393,11 @@ describe('formato mostrado en pantalla', () => {
 
 // ───────────── Trading ─────────────
 describe('trading frente a la calculadora de control', () => {
+  it('% total sobre capital inicial (preparado) coincide con el control', () => {
+    expect(T.pctTotalSobreCapital(0.035, 0.5)).toBeCloseTo(K.pctTotalCtl(0.035, 0.5).toNumber(), 12)
+    expect(K.pctTotalCtl(0.035, 0)).toBeNull()
+  })
+
   const PR = { EUR: 91234.5, USD: 99876.25, AUD: 151000.75 }
   const base = (o: Partial<T.Trade>): T.Trade => ({ id: 'x', estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-01-01', fechaCierre: '2025-01-02', precioEntrada: 100, precioSalida: 110, moneda: 'USD', apalancamiento: 1, ...o })
 
@@ -403,7 +408,7 @@ describe('trading frente a la calculadora de control', () => {
     const k = K.totalesTradingCtl(trades, PR, vista)
     ok(a.ganado, k.ganado, BTC, 'ganado'); ok(a.perdido, k.perdido, BTC, 'perdido'); ok(a.neto, k.neto, BTC, 'neto')
     ok(a.netoValor, k.netoValor, EUR, 'neto × precio'); ok(a.abiertos, k.abiertos, BTC, 'abiertos')
-    pp(a.pctTotal, k.pctTotal, `${etiqueta} % total`); pp(a.gananciaMedia, k.gananciaMedia, `${etiqueta} media`); pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
+    pp(a.gananciaMedia, k.gananciaMedia, `${etiqueta} media`); pp(a.pctGanadores, k.pctGanadores, `${etiqueta} ganadores`); c += 2
     ok(a.duracionMediaDias, k.duracionMedia, 1e-9, 'duración'); ok(a.racha, k.racha, 0, 'racha')
     if (k.mejor) { pp(a.mejor!.calculo.pct, k.mejor, `${etiqueta} mejor`); pp(a.peor!.calculo.pct, k.peor, `${etiqueta} peor`); c += 2 }
     const filas = T.filasTrades(trades, PR, vista).filter((f) => !f.calculo.abierto)

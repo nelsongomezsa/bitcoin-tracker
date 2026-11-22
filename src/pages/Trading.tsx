@@ -85,7 +85,7 @@ export default function Trading() {
             <div className={`big ${claseSigno(tot.neto)}`} style={{ fontSize: 'clamp(24px, 8vw, 34px)', overflowWrap: 'anywhere' }}>{v.btcS(tot.neto)}</div>
             <div className="muted num" style={{ fontSize: 13 }}>Vale hoy {v.$s(tot.netoValor)}</div>
             {!v.privado && curva.length > 1 && <Sparkline valores={curva} etiqueta="BTC ganados acumulados, trade a trade" />}
-            <div className={`mid ${claseSigno(tot.pctTotal)}`}>{flecha(tot.pctTotal)} {v.pct(tot.pctTotal)} <span className="muted" style={{ fontSize: 13 }}>en total</span></div>
+            <div className={`mid num ${claseSigno(tot.neto)}`} style={{ fontSize: 15 }}>{flecha(tot.neto)} Neto {v.btcS(tot.neto)} · {v.$s(tot.netoValor)}</div>
           </section>
 
           <div className="chips" aria-label="Resumen de trades">
