@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   addDoc, collection, deleteDoc, deleteField, doc, getDocFromServer, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc,
 } from 'firebase/firestore'
@@ -12,6 +12,7 @@ import { avisosSchema, operacionSchema, perfilSchema, planSchema, tradeSchema } 
 import type { Trade, TradeGuardable } from '../lib/trading'
 import { guardarVistaLocal, leerVistaLocal } from '../lib/modoVista'
 import { interruptorPrueba } from '../lib/pruebas'
+import { cargarMercadoReal, type MercadoReal } from '../lib/demoReal'
 import { idDispositivo, marcarRegistrado, navegadorGenerico, yaRegistrado } from '../lib/dispositivo'
 import {
   AVISOS_DEMO, GLOBAL_DEMO, OBJETIVOS_DEMO, PERFIL_DEMO, RED_DEMO, demoExtra, fngDemo, velasDemo, velasSinteticas, historicoDemo, mercadoDemo, operacionesDemo, planDemo, tradesDemo,
@@ -33,18 +34,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
 }
 
 // ───────────── Modo demo: todo en memoria, nada llega a Firestore ─────────────
+/** Datos reales de la demo (velas diarias y semanales de Kraken) para los hooks de mercado. */
+const DemoRealCtx = createContext<{ activo: boolean; velas: MercadoReal['velas'] | null }>({ activo: false, velas: null })
+
 function DemoProvider({ children }: { children: ReactNode }) {
+  const vacia = interruptorPrueba('demo-vacia')
+  const sintetica = interruptorPrueba('demo-sintetica') // solo para las pruebas automáticas: todo inventado y determinista
+  // Precio real de BTC (Kraken). Si no se puede (sin red…), se usan datos inventados.
+  const [real, setReal] = useState<MercadoReal | null | 'fallo'>(sintetica ? 'fallo' : null)
+  useEffect(() => {
+    if (sintetica) return
+    let vivo = true
+    const limite = setTimeout(() => { if (vivo) setReal((r) => r ?? 'fallo') }, 9000)
+    void cargarMercadoReal().then((r) => { if (vivo) setReal(r ?? 'fallo') })
+    return () => { vivo = false; clearTimeout(limite) }
+  }, [sintetica])
+  const listo = real !== null
+  const datos = real && real !== 'fallo' ? real : null
+  const mercado = useMemo(() => datos?.mercado ?? mercadoDemo(), [datos])
+  const historico = useMemo(() => datos?.historico ?? historicoDemo(), [datos])
+
   const [perfil, setPerfil] = useState<Perfil>(() => ({ ...PERFIL_DEMO, vista: leerVistaLocal() }))
-  const [operaciones, setOperaciones] = useState<Operacion[]>(() => (interruptorPrueba('demo-vacia') ? [] : operacionesDemo()))
-  const [trades, setTrades] = useState<Trade[]>(() => (interruptorPrueba('demo-vacia') ? [] : tradesDemo()))
-  const [plan, setPlan] = useState<Plan>(() => (interruptorPrueba('demo-vacia') ? PLAN_VACIO : planDemo()))
-  const [objetivos, setObjetivos] = useState<Objetivos>(() => (interruptorPrueba('demo-vacia') ? {} : OBJETIVOS_DEMO))
+  const [operaciones, setOperaciones] = useState<Operacion[]>([])
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [plan, setPlan] = useState<Plan>(PLAN_VACIO)
+  const [objetivos, setObjetivos] = useState<Objetivos>({})
   const [avisos, setAvisos] = useState<AvisosDoc>(AVISOS_DEMO)
-  const mercado = useMemo(() => mercadoDemo(), [])
-  const historico = useMemo(() => historicoDemo(), [])
+  // Las compras, los trades y el plan inventados se crean una vez, anclados al histórico (real) ya cargado.
+  const iniciado = useRef(false)
+  useEffect(() => {
+    if (!listo || iniciado.current) return
+    iniciado.current = true
+    if (vacia) return
+    const ahora = Date.now()
+    setOperaciones(operacionesDemo(ahora, historico))
+    setTrades(tradesDemo(ahora, historico, datos?.usdPorEur ?? 1.08))
+    setPlan(planDemo(ahora, historico))
+    setObjetivos(OBJETIVOS_DEMO)
+  }, [listo, vacia, historico, datos])
+  const ctxReal = useMemo(() => ({ activo: Boolean(datos), velas: datos?.velas ?? null }), [datos])
 
   const value: Datos = {
-    demo: true, cargando: false, perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado: false,
+    demo: true, demoReal: Boolean(datos), cargando: !listo, perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado: false,
     guardarOperacion: async (o, id) => {
       const v = operacionSchema.parse(o)
       setOperaciones((prev) => (id ? prev.map((x) => (x.id === id ? { ...v, id } : x)) : [...prev, { ...v, id: `demo-${crypto.randomUUID()}` }]))
@@ -69,7 +100,7 @@ function DemoProvider({ children }: { children: ReactNode }) {
       return () => undefined
     },
   }
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
+  return <DemoRealCtx.Provider value={ctxReal}><Ctx.Provider value={value}>{children}</Ctx.Provider></DemoRealCtx.Provider>
 }
 
 // ───────────── Firestore ─────────────
@@ -172,7 +203,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
   }, [uid, nombre])
 
   const value: Datos = {
-    demo: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado,
+    demo: false, demoReal: false, cargando: !(listos.perfil && listos.ops), perfil, operaciones, trades, plan, objetivos, avisos, mercado, historico, telegramVinculado,
     guardarOperacion: async (o: OperacionGuardable, id) => {
       if (!db) return
       const v = limpiar(operacionSchema.parse(o))
@@ -250,17 +281,20 @@ async function registrarDispositivo(uid: string) {
 /** Documento compartido de mercado (mercado/<id>), escrito solo por el job. Se escucha solo mientras la pantalla está abierta. */
 export function useMercadoDoc<T = Record<string, unknown>>(id: string): T | null {
   const { demo } = useAuth()
+  const real = useContext(DemoRealCtx)
   const [datos, setDatos] = useState<T | null>(null)
   useEffect(() => {
     setDatos(null) // al cambiar de documento no se queda el anterior (p. ej. al cambiar de temporalidad)
     if (!id) return // sin documento (p. ej. 1m y 5m vienen en directo)
     if (demo) {
-      const d: Record<string, unknown> = { velas_15m: velasSinteticas(15), velas_1h: velasSinteticas(60), velas_4h: velasSinteticas(240), velas_1d: velasSinteticas(1440), velas_1w: velasSinteticas(10080), velas: velasDemo(), fng: fngDemo(), global: GLOBAL_DEMO, red: RED_DEMO, ...demoExtra() }
+      // Con precio real, las velas por temporalidad no se inventan: el gráfico las pide a Kraken (REST) y las diarias/semanales salen de lo ya descargado.
+      const sinteticas = real.activo ? {} : { velas_15m: velasSinteticas(15), velas_1h: velasSinteticas(60), velas_4h: velasSinteticas(240), velas_1d: velasSinteticas(1440), velas_1w: velasSinteticas(10080) }
+      const d: Record<string, unknown> = { ...sinteticas, velas: real.velas ?? velasDemo(), fng: fngDemo(), global: GLOBAL_DEMO, red: RED_DEMO, ...demoExtra() }
       setDatos((d[id] as T) ?? null)
       return
     }
     if (!db) return
     return onSnapshot(doc(db, `mercado/${id}`), (s) => setDatos(s.exists() ? (s.data() as T) : null))
-  }, [id, demo])
+  }, [id, demo, real])
   return datos
 }

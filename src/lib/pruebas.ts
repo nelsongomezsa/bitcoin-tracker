@@ -1,5 +1,5 @@
 // Interruptores solo para las pruebas automáticas (localStorage). Sin ellos, la app se comporta con normalidad.
-export function interruptorPrueba(clave: 'demo-vacia' | 'demo-directo' | 'pruebas-contadores'): boolean {
+export function interruptorPrueba(clave: 'demo-vacia' | 'demo-directo' | 'demo-sintetica' | 'pruebas-contadores'): boolean {
   try { return localStorage.getItem(clave) === '1' } catch { return false }
 }
 

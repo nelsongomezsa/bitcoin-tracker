@@ -19,10 +19,10 @@ export function historicoDemo(hoy = Date.now()): PuntoPrecio[] {
 
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10)
 
-export function operacionesDemo(hoy = Date.now()): Operacion[] {
-  const h = historicoDemo(hoy)
+/** Compras inventadas, ancladas al histórico dado (el real de Kraken en la demo con precio real; si no, el inventado). */
+export function operacionesDemo(hoy = Date.now(), h: PuntoPrecio[] = historicoDemo(hoy)): Operacion[] {
   const compra = (n: number, diasAtras: number, cantidad: number, plataforma = 'Exchange demo'): Operacion => {
-    const p = h[h.length - 1 - diasAtras]
+    const p = h[Math.max(0, h.length - 1 - diasAtras)]
     return {
       id: `demo-${n}`, tipo: 'compra', fecha: iso(p.t), cantidad, comision: Math.round(cantidad * 0.0125 * 100) / 100,
       precio: p.precio, moneda: 'EUR', plataforma,
@@ -35,9 +35,8 @@ export function operacionesDemo(hoy = Date.now()): Operacion[] {
 }
 
 /** 15 trades ficticios (13 cerrados y 2 abiertos) a partir de la serie demo, en USD. Deterministas. */
-export function tradesDemo(hoy = Date.now()): Trade[] {
-  const h = historicoDemo(hoy)
-  const px = (diasAtras: number) => Math.round(h[h.length - 1 - diasAtras].precio * 1.08)
+export function tradesDemo(hoy = Date.now(), h: PuntoPrecio[] = historicoDemo(hoy), usdPorEur = 1.08): Trade[] {
+  const px = (diasAtras: number) => Math.round(h[Math.max(0, h.length - 1 - diasAtras)].precio * usdPorEur)
   // [inicio (días atrás), duración, dirección, apalancamiento, movimiento de precio (%), margen BTC, comisiones %]
   const filas: [number, number, 'largo' | 'corto', number, number, number, number][] = [
     [175, 3, 'largo', 5, 3.2, 0.05, 0.4], [165, 2, 'corto', 3, 2.1, 0.04, 0.3], [152, 4, 'largo', 2, -2.4, 0.06, 0.2], [140, 1, 'largo', 10, 1.1, 0.03, 0.5],
@@ -64,8 +63,8 @@ export function tradesDemo(hoy = Date.now()): Trade[] {
 
 export const PERFIL_DEMO: Perfil = { nombre: 'Demo', monedaPreferida: 'EUR', modoPrivado: false, mostrarTrading: true, sumarTradingACartera: false, vista: 'simple' }
 
-export function planDemo(hoy = Date.now()): Plan {
-  const precios = historicoDemo(hoy).map((p) => p.precio)
+export function planDemo(hoy = Date.now(), h: PuntoPrecio[] = historicoDemo(hoy)): Plan {
+  const precios = h.map((p) => p.precio)
   const ref = precios[precios.length - 1]
   return {
     capital: 5000,

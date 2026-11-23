@@ -100,6 +100,8 @@ export interface EntradaHistorial {
 
 export interface Datos {
   demo: boolean
+  /** Demo con el precio real de BTC (Kraken): solo las compras, los trades y el plan son inventados. */
+  demoReal: boolean
   cargando: boolean
   perfil: Perfil
   operaciones: Operacion[]

@@ -77,7 +77,7 @@ async function nuevoMovil(opciones: { demoVacia: boolean }): Promise<{ ctx: Brow
   page.on('pageerror', (e) => errores.push(`PAGEERR ${e.message.slice(0, 160)}`))
   await page.addInitScript(SIMULAR_DIRECTO)
   await simularKrakenRest(page)
-  if (opciones.demoVacia) await page.addInitScript(() => { localStorage.setItem('demo-vacia', '1'); localStorage.setItem('demo-directo', '1') })
+  if (opciones.demoVacia) await page.addInitScript(() => { localStorage.setItem('demo-vacia', '1'); localStorage.setItem('demo-directo', '1'); localStorage.setItem('demo-sintetica', '1') })
   return { ctx, page, errores }
 }
 

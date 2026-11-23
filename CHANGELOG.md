@@ -4,6 +4,12 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 
 ## 23 de noviembre de 2026
 
+### Modo demo
+- **Precio real de BTC en la demo:** el precio actual (en directo, con el WebSocket de Kraken), el histórico de un año, los cambios de 24 horas y 7 días, el «máximo» y las velas de todas las temporalidades salen de la API pública de Kraken (sin clave ni datos del usuario). **Solo las compras, los trades y el plan son inventados**, y se calculan sobre los precios reales de cada día, así que tienen sentido (por ejemplo, la compra «de hace 300 días» tiene el precio real de ese día).
+- **Aviso en pantalla:** «Modo demo · precio real de BTC, compras ficticias». Si Kraken no responde (sin conexión, límite de peticiones) o tarda más de 9 segundos, la demo se abre con datos inventados y dice «Modo demo · datos ficticios».
+- **Lo que sigue siendo de ejemplo:** el índice de miedo y codicia no se muestra en la demo (no viene de Kraken); los paneles de Mercado de empresas, gobiernos, ballenas y carteras siguen siendo ejemplos con nombres ficticios. El «máximo» es el de lo que devuelve Kraken (unos dos años), no el máximo histórico absoluto.
+- **Auditoría:** las pruebas que comparan cifras usan una demo inventada y determinista (con un interruptor de pruebas); una prueba aparte simula Kraken con datos inventados y comprueba el banner, el precio, las compras ancladas al histórico, las velas de cada temporalidad y el respaldo cuando Kraken no responde.
+
 ### Trading (nuevo apartado)
 - **Sumar Trading a la cartera:** la opción «Sumar los BTC ganados con trades a mi cartera» viene **desactivada** en las cuentas nuevas. Activada, Inicio (en vista simple y en pro) enseña una tabla con «Cartera», «Trading (neto)» y «Total», en BTC y en valor, en la moneda elegida. El neto de Trading es ganado menos perdido, así que **las pérdidas restan**. El **precio medio de compra no cambia** nunca por los trades: solo cambian el total en BTC y su valor.
 - **Resultado en dinero (opcional):** en un trade cerrado puedes escribir cuánto ganaste (positivo) o perdiste (negativo) en EUR, USD o AUD; la moneda por defecto es la de tu cuenta. Los BTC del trade son **resultado ÷ precio de BTC en esa moneda**, redondeados a 8 decimales.
@@ -67,7 +73,7 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 - **Calculadora de control** independiente de la app, con aritmética decimal exacta, para comprobar los cálculos de compras, FIFO, plan, calculadoras, avisos y trading.
 - **Tests de propiedades:** cientos de carteras y de conjuntos de trades aleatorios, y reglas que siempre deben cumplirse (por ejemplo, que el neto es lo ganado menos lo perdido).
 - **Cuenta vacía:** una pasada completa en el móvil con una cuenta sin compras, ventas ni trades (demo vacía y, con `npm run auditoria:vacia`, un usuario nuevo en el emulador de Firebase). Comprueba sin errores en consola, un solo gráfico por pantalla, que el gráfico de Inicio no se rehace con 30 segundos de precio en vivo y que «Abrir gráfico pro» abre.
-- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **374 comprobaciones, 0 diferencias**. Además hay **287 tests automáticos** y **55 tests de las reglas de seguridad** de la base de datos.
+- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **374 comprobaciones, 0 diferencias**. Además hay **298 tests automáticos** y **55 tests de las reglas de seguridad** de la base de datos.
 
 ## 22 de noviembre de 2026
 

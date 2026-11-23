@@ -123,7 +123,7 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
     return () => clearTimeout(t)
   }, [tf, hayDoc, esDirecto, monedaKraken])
   const usarRest = !esDirecto && !hayDoc && esperado
-  const directo = useVelasDirecto(esDirecto || usarRest, monedaKraken, MINUTOS[tf], v.demo, esDirecto)
+  const directo = useVelasDirecto(esDirecto || usarRest, monedaKraken, MINUTOS[tf], v.demo && !v.demoReal, esDirecto)
   const velas: Vela[] = useMemo(() => {
     if (esDirecto || (usarRest && !hayDoc)) return directo.velas.map((x) => ({ ...x, open: x.open * factor, high: x.high * factor, low: x.low * factor, close: x.close * factor }))
     return aVelas(filasDoc ?? [], factor)

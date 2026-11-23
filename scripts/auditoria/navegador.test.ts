@@ -85,6 +85,8 @@ const irA = async (href: string) => {
 beforeAll(async () => {
   browser = await chromium.launch({ executablePath: chromiumPath() })
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, reducedMotion: 'reduce' })
+  // Las auditorías comparan con la calculadora de control: datos de demo inventados y deterministas (no el precio real de Kraken).
+  await ctx.addInitScript(() => localStorage.setItem('demo-sintetica', '1'))
   page = await ctx.newPage()
   await page.goto(`${URL_BASE}/login`)
   await page.getByText('Probar sin cuenta').click()

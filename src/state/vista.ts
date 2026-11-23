@@ -11,7 +11,7 @@ export function useVista() {
   const d = useDatos()
   const [moneda, setMoneda] = useState<Moneda>(d.perfil.monedaPreferida)
   // Precio en directo (Kraken) mientras la app está abierta; si falla, el del job (mercado/precio, cada 15 min).
-  const vivo = usePreciosVivos(!d.demo || interruptorPrueba('demo-directo'))
+  const vivo = usePreciosVivos(!d.demo || d.demoReal || interruptorPrueba('demo-directo'))
   const base = d.mercado?.precios ?? null
   const eur = vivo.ticks.EUR?.last, usd = vivo.ticks.USD?.last
   const enDirecto = Boolean(base && vivo.conectado && eur && usd)

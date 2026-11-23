@@ -18,6 +18,7 @@ Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Exc
 Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.md).
 
 ### 23 de noviembre de 2026
+- **Demo con el precio real de BTC.** «Probar sin cuenta» ahora usa el precio real de Bitcoin (de la API pública de Kraken): precio actual y en directo, histórico, gráficos y velas. Lo único inventado son tus compras, trades y plan, que se anclan a los precios reales de cada día. Si no hay conexión, la demo sigue funcionando con datos inventados y lo avisa.
 - **Gráfico pro con todas las temporalidades.** 1D y 1S salían vacíos porque el servidor solo refrescaba esas velas en una franja horaria que casi nunca coincidía con sus ejecuciones. Ahora las refresca según su antigüedad, con pausas entre peticiones a Kraken; y mientras falte alguna temporalidad, la app la pide directamente a Kraken en lugar de dejar el gráfico vacío.
 - **Gráfico pro más limpio.** Las marcas que se solapan se agrupan en un marcador con el número, «Mis trades» va oculto por defecto en 1D y 1S y la línea punteada entrada-salida solo aparece para el trade seleccionado. Máx., Mín. y Vol. de 24 h se rellenan con el ticker de Kraken (también en la demo).
 - **Pequeños arreglos.** Cada pantalla se abre arriba del todo; al cambiar a una temporalidad sin datos se limpia la escala de precios; y en Inicio, el minigráfico de «Valor actual» solo aparece si hay compras y dibuja la evolución real del valor por días (si no hay, no se pinta nada).
