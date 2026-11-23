@@ -309,7 +309,10 @@ export function tradeCtl(t, precioActual) {
   const mov = ref.minus(t.precioEntrada).div(t.precioEntrada).mul(signoDir)
   const auto = mov.mul(t.apalancamiento ?? 1).minus(D(t.comisiones ?? 0).div(100))
   const pct = t.pctManual != null ? D(t.pctManual).div(100) : auto // el % escrito a mano manda sobre el cálculo
-  const btc = t.btcGanadoManual != null ? D(t.btcGanadoManual) : t.margenBTC != null ? D(t.margenBTC).mul(pct) : null
+  // BTC: a mano > resultado en dinero ÷ precio (8 decimales, redondeo simétrico) > margen × %
+  const btc = t.btcGanadoManual != null ? D(t.btcGanadoManual)
+    : t.resultadoDinero != null && t.resultadoPrecio != null ? D(t.resultadoDinero).div(t.resultadoPrecio).toDecimalPlaces(8, Decimal.ROUND_HALF_UP)
+    : t.margenBTC != null ? D(t.margenBTC).mul(pct) : null
   return { abierto, mov, pct, btc }
 }
 

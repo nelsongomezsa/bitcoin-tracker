@@ -74,7 +74,8 @@ function DemoProvider({ children }: { children: ReactNode }) {
 
 // ───────────── Firestore ─────────────
 const num = (v: unknown, d = 0) => (typeof v === 'number' ? v : d)
-const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisiones', 'pctManual', 'btcGanadoManual', 'plataforma', 'nota', 'margenDestinado', 'horaInicio', 'horaCierre']
+const MONEDAS_OK = ['EUR', 'USD', 'AUD']
+const OPCIONALES_TRADE = ['fechaCierre', 'precioSalida', 'margenBTC', 'comisiones', 'pctManual', 'btcGanadoManual', 'plataforma', 'nota', 'margenDestinado', 'resultadoDinero', 'resultadoMoneda', 'resultadoPrecio', 'horaInicio', 'horaCierre']
 const limpiar = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as T
 
 function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: string; children: ReactNode }) {
@@ -127,7 +128,7 @@ function FirestoreProvider({ uid, nombre, children }: { uid: string; nombre: str
             return {
               id: d.id, estado: x.estado, direccion: x.direccion, fechaInicio: x.fechaInicio, precioEntrada: num(x.precioEntrada), moneda: x.moneda ?? 'USD',
               ...(typeof x.apalancamiento === 'number' ? { apalancamiento: x.apalancamiento } : {}), ...(typeof x.fechaCierre === 'string' ? { fechaCierre: x.fechaCierre } : {}),
-              ...opc('precioSalida'), ...opc('margenBTC'), ...opc('comisiones'), ...opc('pctManual'), ...opc('btcGanadoManual'), ...opc('margenDestinado'),
+              ...opc('precioSalida'), ...opc('margenBTC'), ...opc('comisiones'), ...opc('pctManual'), ...opc('btcGanadoManual'), ...opc('margenDestinado'), ...opc('resultadoDinero'), ...opc('resultadoPrecio'), ...(MONEDAS_OK.includes(x.resultadoMoneda) ? { resultadoMoneda: x.resultadoMoneda } : {}),
               ...(typeof x.plataforma === 'string' ? { plataforma: x.plataforma } : {}), ...(typeof x.nota === 'string' ? { nota: x.nota } : {}),
               ...(typeof x.horaInicio === 'string' ? { horaInicio: x.horaInicio } : {}), ...(typeof x.horaCierre === 'string' ? { horaCierre: x.horaCierre } : {}),
             } as Trade

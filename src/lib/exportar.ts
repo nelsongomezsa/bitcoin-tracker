@@ -42,13 +42,13 @@ export function informeFifoCsv(filas: { fecha: string; btcVendidos: number; ingr
 export const descargarInforme = (csv: string, anio: number) => descargar(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `informe-fifo-${anio}.csv`)
 
 // ───── Trades ─────
-const CAB_TRADES = ['Trade', 'Estado', 'Dirección', 'Fecha inicio', 'Fecha cierre', 'Precio entrada', 'Precio salida', 'Moneda', 'Apalancamiento', 'Margen (BTC)', 'Comisiones (%)', '% ganancia', 'Total ganado (BTC)', 'Plataforma', 'Nota', 'Hora inicio', 'Hora cierre', 'Margen destinado (BTC)']
+const CAB_TRADES = ['Trade', 'Estado', 'Dirección', 'Fecha inicio', 'Fecha cierre', 'Precio entrada', 'Precio salida', 'Moneda', 'Apalancamiento', 'Margen (BTC)', 'Comisiones (%)', '% ganancia', 'Total ganado (BTC)', 'Plataforma', 'Nota', 'Hora inicio', 'Hora cierre', 'Margen destinado (BTC)', 'Resultado en dinero', 'Moneda del resultado', 'Precio de BTC usado']
 const filasTrades = (ts: Trade[]) =>
   [...ts].sort((a, b) => (a.fechaInicio < b.fechaInicio ? -1 : a.fechaInicio > b.fechaInicio ? 1 : 0)).map((t, i) => {
     const c = t.estado === 'cerrado' ? calcularTrade(t, t.precioSalida ?? t.precioEntrada) : null
     return [
       i + 1, t.estado, t.direccion, t.fechaInicio, t.fechaCierre ?? '', t.precioEntrada, t.precioSalida ?? '', t.moneda, t.apalancamiento ?? '', t.margenBTC ?? '', t.comisiones ?? '',
-      c ? Math.round(c.pct * 1e6) / 1e4 : '', c?.btc != null ? c.btc : '', seguroCelda(t.plataforma ?? ''), seguroCelda(t.nota ?? ''), t.horaInicio ?? '', t.horaCierre ?? '', t.margenDestinado ?? '',
+      c ? Math.round(c.pct * 1e6) / 1e4 : '', c?.btc != null ? c.btc : '', seguroCelda(t.plataforma ?? ''), seguroCelda(t.nota ?? ''), t.horaInicio ?? '', t.horaCierre ?? '', t.margenDestinado ?? '', t.resultadoDinero ?? '', t.resultadoMoneda ?? '', t.resultadoPrecio ?? '',
     ]
   })
 

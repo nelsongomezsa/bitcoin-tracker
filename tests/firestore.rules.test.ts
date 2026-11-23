@@ -390,3 +390,34 @@ describe('trades: margen destinado y nota', () => {
     await assertFails(crear(base({ nota: 'x'.repeat(201) })))
   })
 })
+
+describe('trades: resultado en dinero', () => {
+  const base = (extra: Record<string, unknown> = {}) => ({ estado: 'cerrado', direccion: 'largo', fechaInicio: '2025-03-01', fechaCierre: '2025-03-04', precioEntrada: 80000, precioSalida: 82520, moneda: 'USD', creado: serverTimestamp(), ...extra })
+  const completo = { resultadoDinero: -100, resultadoMoneda: 'EUR', resultadoPrecio: 81300 }
+  let k = 0
+  const crear = (d: Record<string, unknown>) => setDoc(doc(ana(), `users/ana/trades/r${k++}`), d)
+  it('importe, moneda y precio juntos: positivo, negativo o cero', async () => {
+    await assertSucceeds(crear(base(completo)))
+    await assertSucceeds(crear(base({ ...completo, resultadoDinero: 250.5 })))
+    await assertSucceeds(crear(base({ ...completo, resultadoDinero: 0 })))
+    await assertSucceeds(crear(base({ ...completo, resultadoMoneda: 'AUD', btcGanadoManual: -0.0012 }))) // los BTC a mano pueden convivir con el resultado
+  })
+  it('a medias no vale: los tres campos van juntos', async () => {
+    await assertFails(crear(base({ resultadoDinero: -100 })))
+    await assertFails(crear(base({ resultadoDinero: -100, resultadoMoneda: 'EUR' })))
+    await assertFails(crear(base({ resultadoMoneda: 'EUR', resultadoPrecio: 81300 })))
+    await assertFails(crear(base({ resultadoPrecio: 81300 })))
+  })
+  it('tipos y rangos', async () => {
+    await assertFails(crear(base({ ...completo, resultadoMoneda: 'BTC' })))
+    await assertFails(crear(base({ ...completo, resultadoDinero: '−100' })))
+    await assertFails(crear(base({ ...completo, resultadoDinero: 1000000000 })))
+    await assertFails(crear(base({ ...completo, resultadoDinero: -1000000000 })))
+    await assertFails(crear(base({ ...completo, resultadoPrecio: 0 })))
+    await assertFails(crear(base({ ...completo, resultadoPrecio: -5 })))
+    await assertFails(crear(base({ ...completo, resultadoPrecio: 100000000 })))
+  })
+  it('otro usuario no puede escribirlo en lo de Ana', async () => {
+    await assertFails(setDoc(doc(beto(), 'users/ana/trades/r99'), base(completo)))
+  })
+})

@@ -1,8 +1,9 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import Sheet from './Sheet'
-import { calcularTrade, pasoAPaso, type Direccion, type Trade } from '../lib/trading'
+import { btcDeResultado, calcularTrade, pasoAPaso, type Direccion, type Trade } from '../lib/trading'
+import { buscarPrecioBtc } from '../lib/precioResultado'
 import { MONEDAS, tradeSchema } from '../lib/schemas'
-import { btcConSigno, hoyISO, porcentajeConSigno } from '../lib/format'
+import { btcConSigno, dinero, hoyISO, porcentajeConSigno } from '../lib/format'
 import { mensajeError } from '../lib/errores'
 import { PLATAFORMAS, recordarPlataforma, ultimaPlataforma } from '../lib/plataformas'
 import { useVista } from '../state/vista'
@@ -39,6 +40,9 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
     margenDestinado: inicial?.margenDestinado != null ? String(inicial.margenDestinado) : '',
     horaInicio: inicial?.horaInicio ?? '',
     horaCierre: inicial?.horaCierre ?? '',
+    resultado: inicial?.resultadoDinero != null ? String(inicial.resultadoDinero) : '',
+    rMoneda: (inicial?.resultadoMoneda ?? v.perfil.monedaPreferida) as Moneda,
+    rPrecio: inicial?.resultadoPrecio != null ? String(inicial.resultadoPrecio) : '',
   })
   const [otroLev, setOtroLev] = useState(inicial?.apalancamiento != null && !PILDORAS.includes(inicial.apalancamiento))
   const [error, setError] = useState('')
@@ -46,6 +50,37 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }))
 
   const cerrado = f.estado === 'cerrado'
+
+  // ── Resultado en dinero → BTC: el precio sale de la vela de Kraken del cierre (o del precio de salida si no hay vela) ──
+  const resultadoNum = aNum(f.resultado)
+  const hayResultado = cerrado && Number.isFinite(resultadoNum)
+  const [fuentePrecio, setFuentePrecio] = useState(inicial?.resultadoPrecio != null ? 'guardado con el trade' : '')
+  const [buscando, setBuscando] = useState(false)
+  const claveBuscada = useRef(inicial?.resultadoPrecio != null ? `${inicial.resultadoMoneda}|${inicial.fechaCierre}|${inicial.horaCierre ?? ''}` : '')
+  const precioSalidaRef = useRef(f.precioSalida)
+  precioSalidaRef.current = f.precioSalida
+  const monedaTradeRef = useRef(f.moneda)
+  monedaTradeRef.current = f.moneda
+  const preciosRef = useRef(v.precios)
+  preciosRef.current = v.precios
+  useEffect(() => {
+    if (!hayResultado) return
+    const clave = `${f.rMoneda}|${f.fechaCierre}|${f.horaCierre}`
+    if (clave === claveBuscada.current) return
+    let vigente = true
+    setBuscando(true)
+    const t = setTimeout(async () => {
+      const r = await buscarPrecioBtc({ moneda: f.rMoneda, fecha: f.fechaCierre, hora: f.horaCierre || undefined, trade: { precioSalida: aNum(precioSalidaRef.current), moneda: monedaTradeRef.current }, precios: preciosRef.current })
+      if (!vigente) return
+      claveBuscada.current = clave
+      setBuscando(false)
+      if (r) { setF((s) => ({ ...s, rPrecio: String(r.precio) })); setFuentePrecio(r.detalle) }
+      else setFuentePrecio('no he encontrado precio: escríbelo a mano')
+    }, 400)
+    return () => { vigente = false; clearTimeout(t); setBuscando(false) }
+  }, [hayResultado, f.rMoneda, f.fechaCierre, f.horaCierre])
+  const precioRes = aNum(f.rPrecio)
+  const btcRes = hayResultado && precioRes > 0 ? btcDeResultado(resultadoNum, precioRes) : null
   const candidato = useMemo(() => {
     const r = tradeSchema.safeParse({
       estado: f.estado, direccion: f.direccion, fechaInicio: f.fechaInicio, ...(cerrado ? { fechaCierre: f.fechaCierre, precioSalida: aNum(f.precioSalida) } : {}),
@@ -57,10 +92,11 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
       ...(Number.isFinite(aNum(f.btcManual)) ? { btcGanadoManual: aNum(f.btcManual) } : {}),
       ...(f.plataforma.trim() ? { plataforma: f.plataforma } : {}), ...(f.nota.trim() ? { nota: f.nota } : {}),
       ...(Number.isFinite(aNum(f.margenDestinado)) ? { margenDestinado: aNum(f.margenDestinado) } : {}),
+      ...(hayResultado ? { resultadoDinero: resultadoNum, resultadoMoneda: f.rMoneda } : {}), ...(hayResultado && precioRes > 0 ? { resultadoPrecio: precioRes } : {}),
       ...(f.horaInicio ? { horaInicio: f.horaInicio } : {}), ...(cerrado && f.horaCierre ? { horaCierre: f.horaCierre } : {}),
     })
     return r
-  }, [f, cerrado])
+  }, [f, cerrado, hayResultado, resultadoNum, precioRes])
 
   const vista = useMemo(() => {
     if (!candidato.success) return null
@@ -158,6 +194,29 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
               Sugerencia (cálculo automático{f.apalancamiento.trim() === '' ? ', sin apalancamiento' : ''}): {porcentajeConSigno(vista.c.sugerencia.pct)}{vista.c.sugerencia.btc != null ? ` · ${btcConSigno(vista.c.sugerencia.btc)}` : ''}
             </p>
             <button type="button" onClick={() => setF((s) => ({ ...s, pct: String(Math.round(vista.c.sugerencia.pct * 1e4) / 100), btcManual: vista.c.sugerencia.btc != null ? String(Math.round(vista.c.sugerencia.btc * 1e8) / 1e8) : s.btcManual }))}>Usar sugerencia</button>
+          </div>
+        )}
+
+        {cerrado && (
+          <div className="stack" style={{ gap: 8 }} role="group" aria-label="Resultado en dinero">
+            <div className="grid2">
+              <label>Resultado en dinero (opcional)<input inputMode="decimal" value={f.resultado} onChange={set('resultado')} placeholder="−100 (pérdida) o 100 (ganancia)" /></label>
+              <label>Moneda del resultado
+                <select value={f.rMoneda} onChange={set('rMoneda')}>{MONEDAS.map((m) => <option key={m}>{m}</option>)}</select>
+              </label>
+            </div>
+            {hayResultado && (
+              <>
+                <label>Precio de BTC usado en {f.rMoneda} (puedes cambiarlo)<input inputMode="decimal" value={f.rPrecio} onChange={(e) => { setF((s) => ({ ...s, rPrecio: e.target.value })); setFuentePrecio('escrito a mano') }} placeholder="0" /></label>
+                <p className="notice" aria-live="polite">
+                  {buscando ? 'Buscando el precio de BTC del cierre en Kraken…'
+                    : btcRes != null
+                      ? <><b className="num">{resultadoNum > 0 ? '+' : resultadoNum < 0 ? '−' : ''}{dinero(Math.abs(resultadoNum), f.rMoneda, Number.isInteger(resultadoNum) ? 0 : 2)} → {btcConSigno(btcRes)} a {dinero(precioRes, f.rMoneda, 0)}/BTC</b> · {fuentePrecio || 'precio escrito a mano'}</>
+                      : `Falta el precio de BTC${fuentePrecio ? ` (${fuentePrecio})` : ''}.`}
+                </p>
+                <p className="notice">Los BTC salen de resultado ÷ precio, a 8 decimales. Si escribes los BTC a mano arriba, mandan ellos.</p>
+              </>
+            )}
           </div>
         )}
 

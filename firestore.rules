@@ -67,7 +67,7 @@ service cloud.firestore {
       match /trades/{tradeId} {
         function precioOk(p) { return esNumero(p) && p > 0 && p < 100000000; }
         function tradeValido(d) {
-          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'pctManual', 'btcGanadoManual', 'plataforma', 'nota', 'margenDestinado', 'horaInicio', 'horaCierre', 'creado', 'editado'])
+          return d.keys().hasOnly(['estado', 'direccion', 'fechaInicio', 'fechaCierre', 'precioEntrada', 'precioSalida', 'moneda', 'apalancamiento', 'margenBTC', 'comisiones', 'pctManual', 'btcGanadoManual', 'plataforma', 'nota', 'margenDestinado', 'resultadoDinero', 'resultadoMoneda', 'resultadoPrecio', 'horaInicio', 'horaCierre', 'creado', 'editado'])
             && d.keys().hasAll(['estado', 'direccion', 'fechaInicio', 'precioEntrada', 'moneda', 'creado'])
             && d.estado in ['abierto', 'cerrado']
             && d.direccion in ['largo', 'corto']
@@ -85,6 +85,10 @@ service cloud.firestore {
             && (!('plataforma' in d) || textoMax(d.plataforma, 40))
             && (!('nota' in d) || textoMax(d.nota, 200))
             && (!('margenDestinado' in d) || (esNumero(d.margenDestinado) && d.margenDestinado > 0 && d.margenDestinado < 21000000))
+            && (!('resultadoDinero' in d) || (esNumero(d.resultadoDinero) && d.resultadoDinero > -1000000000 && d.resultadoDinero < 1000000000))
+            && (!('resultadoMoneda' in d) || esMoneda(d.resultadoMoneda))
+            && (!('resultadoPrecio' in d) || precioOk(d.resultadoPrecio))
+            && (('resultadoDinero' in d) == ('resultadoMoneda' in d)) && (('resultadoDinero' in d) == ('resultadoPrecio' in d))
             && (!('horaInicio' in d) || horaValida(d.horaInicio))
             && (!('horaCierre' in d) || horaValida(d.horaCierre))
             && (!('horaInicio' in d && 'horaCierre' in d && 'fechaCierre' in d) || d.fechaCierre != d.fechaInicio || d.horaCierre >= d.horaInicio)

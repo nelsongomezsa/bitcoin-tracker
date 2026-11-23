@@ -27,6 +27,11 @@ export interface Trade {
   nota?: string
   /** Margen destinado al trade (BTC), solo informativo: no entra en ningún cálculo. */
   margenDestinado?: number
+  /** Resultado del trade en dinero, con signo (positivo si ganaste, negativo si perdiste), en `resultadoMoneda`. */
+  resultadoDinero?: number
+  resultadoMoneda?: Moneda
+  /** Precio de 1 BTC en `resultadoMoneda` con el que se pasó el resultado a BTC (se guarda para enseñarlo y poder revisarlo). */
+  resultadoPrecio?: number
   /** Horas opcionales (HH:MM, 24 h) de la entrada y de la salida. */
   horaInicio?: string
   horaCierre?: string
@@ -34,6 +39,12 @@ export interface Trade {
 
 /** «Largo x5» o, sin apalancamiento, «Largo». */
 export const etiquetaTrade = (t: Pick<Trade, 'direccion' | 'apalancamiento'>) => `${t.direccion === 'largo' ? 'Largo' : 'Corto'}${t.apalancamiento ? ` x${t.apalancamiento}` : ''}`
+
+/** BTC de un resultado en dinero: resultado ÷ precio de BTC, redondeado a 8 decimales (simétrico: −x se redondea como +x). */
+export function btcDeResultado(dinero: number, precio: number): number {
+  const r = Math.round(Math.abs(dinero / precio) * 1e8) / 1e8
+  return dinero < 0 ? -r : r
+}
 
 export type TradeGuardable = Omit<Trade, 'id'>
 
@@ -60,6 +71,8 @@ export interface CalculoTrade {
   btc: number | null
   /** ¿Los BTC están escritos a mano? */
   manual: boolean
+  /** ¿Los BTC salen del resultado en dinero (resultado ÷ precio de BTC)? Solo si no hay BTC escritos a mano. */
+  deResultado: boolean
   /** ¿El % está escrito a mano? */
   pctManual: boolean
   /** Lo que saldría con el cálculo automático (movimiento × apalancamiento − comisiones): solo una sugerencia. */
@@ -75,8 +88,10 @@ export function calcularTrade(t: Trade, precioActual: number): CalculoTrade {
   const pctManual = t.pctManual != null
   const pct = pctManual ? (t.pctManual as number) / 100 : auto
   const manual = t.btcGanadoManual != null
-  const btc = manual ? (t.btcGanadoManual as number) : t.margenBTC != null ? t.margenBTC * pct : null
-  return { abierto, precioReferencia: ref, movimiento: mov, pct, btc, manual, pctManual, sugerencia: { pct: auto, btc: t.margenBTC != null ? t.margenBTC * auto : null } }
+  // Orden: BTC escritos a mano > resultado en dinero ÷ precio de BTC > margen × %.
+  const hayResultado = !manual && t.resultadoDinero != null && t.resultadoPrecio != null && t.resultadoPrecio > 0
+  const btc = manual ? (t.btcGanadoManual as number) : hayResultado ? btcDeResultado(t.resultadoDinero as number, t.resultadoPrecio as number) : t.margenBTC != null ? t.margenBTC * pct : null
+  return { abierto, precioReferencia: ref, movimiento: mov, pct, btc, manual, deResultado: hayResultado, pctManual, sugerencia: { pct: auto, btc: t.margenBTC != null ? t.margenBTC * auto : null } }
 }
 
 const f = (n: number, d: number) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)
@@ -95,6 +110,7 @@ export function pasoAPaso(t: Trade, c: CalculoTrade): string {
     s += ` = ${pctTxt(c.pct)}`
   }
   if (c.manual) s += ` · BTC escritos a mano: ${signo(c.btc!)}${f(Math.abs(c.btc!), 4)} BTC`
+  else if (c.deResultado) s += ` · resultado ${signo(t.resultadoDinero!)}${f(Math.abs(t.resultadoDinero!), 2)} ${t.resultadoMoneda} ÷ ${f(t.resultadoPrecio!, 0)} ${t.resultadoMoneda}/BTC → ${signo(c.btc!)}${f(Math.abs(c.btc!), 5)} BTC`
   else if (c.btc != null) s += ` → ${signo(c.btc)}${f(Math.abs(c.btc), 4)} BTC`
   else s += ' → sin margen: no suma BTC'
   return s

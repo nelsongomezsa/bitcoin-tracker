@@ -431,7 +431,7 @@ describe('trading frente a la calculadora de control', () => {
       a, base({ id: 'b', direccion: 'corto', precioEntrada: 100, precioSalida: 90, margenBTC: 0.2, apalancamiento: 3 }),
       base({ id: 'c', direccion: 'corto', precioEntrada: 100, precioSalida: 120, margenBTC: 0.1, apalancamiento: 2, comisiones: 0.1 }),
       base({ id: 'd', btcGanadoManual: -0.0031, margenBTC: 0.5 }), base({ id: 'e', margenBTC: undefined }),
-      base({ id: 'g', pctManual: 15.35, margenBTC: 0.05, apalancamiento: 5 }), base({ id: 'h', pctManual: -4.2, btcGanadoManual: -0.0011, apalancamiento: undefined }),
+      base({ id: 'g', pctManual: 15.35, margenBTC: 0.05, apalancamiento: 5 }), base({ id: 'r1', resultadoDinero: -100, resultadoMoneda: 'EUR', resultadoPrecio: 81300 }), base({ id: 'r2', resultadoDinero: 200, resultadoMoneda: 'AUD', resultadoPrecio: 100000, margenBTC: 0.3, pctManual: 5 }), base({ id: 'h', pctManual: -4.2, btcGanadoManual: -0.0011, apalancamiento: undefined }),
       base({ id: 'f', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined, moneda: 'EUR', precioEntrada: 90000, margenBTC: 0.1, apalancamiento: 10 }),
     ]
     // el % escrito a mano manda sobre el cálculo; sin apalancamiento se calcula como x1
@@ -448,6 +448,7 @@ describe('trading frente a la calculadora de control', () => {
       entrada: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100), salida: fc.integer({ min: 100_000, max: 15_000_000 }).map((c) => c / 100),
       moneda: fc.constantFrom('EUR', 'USD', 'AUD'), lev: fc.option(fc.constantFrom(1, 2, 3, 5, 10, 25, 125), { nil: undefined }),
       pctm: fc.option(fc.integer({ min: -9000, max: 30000 }).map((n) => n / 100), { nil: undefined }),
+      res: fc.option(fc.record({ d: fc.integer({ min: -500_000, max: 500_000 }).map((n) => n / 100), p: fc.integer({ min: 1_000_000, max: 15_000_000 }).map((n) => n / 100), m: fc.constantFrom('EUR', 'USD', 'AUD') }), { nil: undefined }),
       margen: fc.option(fc.integer({ min: 1, max: 500_000 }).map((n) => n / 1e6), { nil: undefined }),
       com: fc.option(fc.integer({ min: 0, max: 300 }).map((n) => n / 100), { nil: undefined }),
       manual: fc.option(fc.integer({ min: -50_000, max: 50_000 }).map((n) => n / 1e6), { nil: undefined }),
@@ -457,7 +458,7 @@ describe('trading frente a la calculadora de control', () => {
       const trades: T.Trade[] = xs.map((x, i) => ({
         id: `t${i}`, estado: x.estado as T.EstadoTrade, direccion: x.direccion as T.Direccion, fechaInicio: dia(x.ini),
         ...(x.estado === 'cerrado' ? { fechaCierre: dia(x.ini + x.dur), precioSalida: x.salida } : {}),
-        precioEntrada: x.entrada, moneda: x.moneda as A.Moneda, ...(x.lev != null ? { apalancamiento: x.lev } : {}), ...(x.pctm != null ? { pctManual: x.pctm } : {}),
+        precioEntrada: x.entrada, moneda: x.moneda as A.Moneda, ...(x.lev != null ? { apalancamiento: x.lev } : {}), ...(x.pctm != null ? { pctManual: x.pctm } : {}), ...(x.res ? { resultadoDinero: x.res.d, resultadoMoneda: x.res.m as A.Moneda, resultadoPrecio: x.res.p } : {}),
         ...(x.margen != null ? { margenBTC: x.margen } : {}), ...(x.com != null ? { comisiones: x.com } : {}), ...(x.manual != null ? { btcGanadoManual: x.manual } : {}),
       }))
       comparar(trades, vista as A.Moneda, 'aleatorio')

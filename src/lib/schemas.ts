@@ -105,9 +105,13 @@ export const tradeSchema = z
     plataforma: textoCorto(40).regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
     nota: textoCorto(200).optional(),
     margenDestinado: z.number({ message: 'Introduce un número' }).gt(0, 'El margen debe ser mayor que 0').lt(21_000_000).optional(),
+    resultadoDinero: z.number({ message: 'Introduce un número' }).gt(-1_000_000_000, 'Importe demasiado grande').lt(1_000_000_000, 'Importe demasiado grande').optional(),
+    resultadoMoneda: monedaSchema.optional(),
+    resultadoPrecio: z.number({ message: 'Introduce el precio de BTC' }).gt(0, 'El precio debe ser mayor que 0').lt(100_000_000).optional(),
     horaInicio: horaOpcionalSchema,
     horaCierre: horaOpcionalSchema,
   })
+  .refine((t) => (t.resultadoDinero == null) === (t.resultadoMoneda == null) && (t.resultadoDinero == null) === (t.resultadoPrecio == null), { path: ['resultadoDinero'], message: 'El resultado en dinero necesita moneda y precio de BTC' })
   .refine((t) => t.estado === 'abierto' || (t.fechaCierre != null && t.precioSalida != null), { path: ['precioSalida'], message: 'Un trade cerrado necesita fecha y precio de salida' })
   .refine((t) => !(t.fechaCierre === t.fechaInicio && t.horaInicio && t.horaCierre) || t.horaCierre >= t.horaInicio, { path: ['horaCierre'], message: 'La hora de cierre no puede ser anterior a la de inicio' })
   .refine((t) => t.fechaCierre == null || t.fechaCierre >= t.fechaInicio, { path: ['fechaCierre'], message: 'El cierre no puede ser anterior al inicio' })

@@ -18,6 +18,7 @@ Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Exc
 Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.md).
 
 ### 23 de noviembre de 2026
+- **Resultado en dinero en cada trade.** Apunta cuánto ganaste o perdiste en euros, dólares o dólares australianos (con signo menos si perdiste) y la app calcula los BTC con el precio de BTC de la vela de Kraken del cierre. Te enseña la cuenta antes de guardar, por ejemplo «−100 € → −0,00123001 BTC a 81.300 €/BTC», y puedes cambiar el precio o escribir los BTC a mano. Las pérdidas restan en el Total histórico, en «Por mes» y en Ganado, Perdido y Neto.
 - **Margen destinado en cada trade.** Un campo opcional, junto a la nota, para recordar cómo montaste el trade (por ejemplo, «x10 con 0,15 BTC de margen»). Se ve en el detalle del trade y no cambia ningún cálculo.
 - **Importar el Excel original.** La importación ignora sin fallar las celdas de error, las notas sueltas y las columnas vacías, y entiende «1. x5» en la columna Trade como el trade 1 con apalancamiento x5.
 - **Corrección del gráfico de Inicio.** Con el precio en vivo, el gráfico se rehacía cada segundo y se veía rayado o «se volvía loco» al moverlo con el dedo. Ahora se crea una sola vez y solo se actualiza el último punto; además, en el móvil el scroll vertical mueve la página y el gráfico solo se desplaza en horizontal. «Abrir gráfico pro» abre siempre, y una cuenta nueva sin compras ve «Aún no has apuntado ninguna compra» con su botón y, debajo, el precio de BTC.
@@ -27,7 +28,7 @@ Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.
 - **Vista simple o pro.** La vista pro, con tablas y un gráfico de velas tipo exchange, se activa en Ajustes o con el botón «PRO» de Inicio.
 - **Hora opcional** en compras, ventas y trades.
 - **Corrección:** las fechas día/mes/año de un CSV ya no se leen como fechas americanas.
-- **Auditoría de cálculos.** Una calculadora de control independiente, tests con carteras aleatorias y una auditoría en el navegador (ahora, 329 comprobaciones sin diferencias) confirman que las cifras de la pantalla son las correctas.
+- **Auditoría de cálculos.** Una calculadora de control independiente, tests con carteras aleatorias y una auditoría en el navegador (ahora, 339 comprobaciones sin diferencias) confirman que las cifras de la pantalla son las correctas.
 
 ### 22 de noviembre de 2026
 - **Ballenas, empresas y gobiernos con BTC** y carteras públicas que se pueden seguir, en la pestaña Mercado.

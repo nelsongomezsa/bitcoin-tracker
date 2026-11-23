@@ -30,6 +30,8 @@ export default function TradeFicha({ fila, onEditar, onDuplicar, onBorrar, onGra
           {dato('Duración', `${diasEntre(t.fechaInicio, fin)} d`)}
           {dato('Margen', t.margenBTC != null ? v.btcF(t.margenBTC) : '—')}
           {t.margenDestinado != null && dato('Margen destinado', v.btcF(t.margenDestinado))}
+          {t.resultadoDinero != null && t.resultadoMoneda && dato('Resultado en dinero', v.privado ? '••••' : `${t.resultadoDinero > 0 ? '+' : t.resultadoDinero < 0 ? '−' : ''}${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(Math.abs(t.resultadoDinero))} ${t.resultadoMoneda}`)}
+          {t.resultadoPrecio != null && t.resultadoMoneda && dato('Precio de BTC usado', `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(t.resultadoPrecio)} ${t.resultadoMoneda}/BTC`)}
           {dato('Comisiones', t.comisiones != null ? `${String(t.comisiones).replace('.', ',')} %` : '—')}
           {dato('Plataforma', t.plataforma ?? '—')}
         </div>
