@@ -17,9 +17,26 @@ async function main() {
   const { db, messaging } = iniciarAdmin()
   const ahora = Date.now()
 
-  const datos = await Promise.all(
-    MONEDAS.map((m) => getJson(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${m}&ids=bitcoin&price_change_percentage=1h,24h,7d`).then((r) => r[0])),
-  )
+  // Velas de Kraken (API pública, sin clave): van primero porque no dependen de CoinGecko (si este limita las peticiones, las velas se guardan igualmente).
+  // 15m en cada pasada y el resto según su antigüedad (1h, 4h, 1d y 1w).
+  try {
+    await guardarVelas({ db, FieldValue, getJson, ahora })
+  } catch (e) {
+    console.warn('Velas no actualizadas:', String(e.message).slice(0, 80))
+  }
+
+  // CoinGecko: con la clave Demo gratuita (secret COINGECKO_DEMO_KEY) si existe, que tiene un límite de peticiones mayor; un reintento si responde 429.
+  const cabCg = process.env.COINGECKO_DEMO_KEY ? { 'x-cg-demo-api-key': process.env.COINGECKO_DEMO_KEY } : {}
+  const pedirCg = async (m) => {
+    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=${m}&ids=bitcoin&price_change_percentage=1h,24h,7d`
+    try { return (await getJson(url, cabCg))[0] } catch (e) {
+      if (!/429/.test(String(e.message))) throw e
+      await new Promise((r) => setTimeout(r, 8000))
+      return (await getJson(url, cabCg))[0]
+    }
+  }
+  const datos = []
+  for (const m of MONEDAS) datos.push(await pedirCg(m)) // de una en una, para no disparar el límite
   const por = (campo) => Object.fromEntries(datos.map((d, i) => [MONEDAS[i].toUpperCase(), d[campo]]))
   const precios = por('current_price')
   const eur = datos[0]
@@ -63,8 +80,6 @@ async function main() {
   }
   console.log('Precio actualizado')
 
-  // Velas de Kraken (API pública, sin clave): 15m en cada pasada y el resto según su antigüedad (1h, 4h, 1d y 1w).
-  await guardarVelas({ db, FieldValue, getJson, ahora })
 
   // Ballenas: bloques nuevos con transacciones grandes (mempool.space).
   const cfgBallenas = leerJson('./config/ballenas.json')
