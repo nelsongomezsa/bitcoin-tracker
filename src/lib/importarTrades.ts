@@ -12,6 +12,8 @@ export interface ResultadoTrades {
   errores: { fila: number; motivo: string }[]
   /** Apalancamiento leído de la cabecera o de la columna (null si no aparece: es opcional). */
   apalancamiento: number | null
+  /** Cuántos trades traen apalancamiento propio (p. ej. «1. x5» en la columna Trade). */
+  conApalancamiento: number
   /** ¿La hoja trae «Total histórico»? */
   hayHistorico: boolean
   /** Filas donde la suma acumulada de «Total ganado» no coincide con «Total histórico». */
@@ -67,14 +69,12 @@ export function filasATrades(filas: unknown[][], moneda: Moneda): ResultadoTrade
   const errores: ResultadoTrades['errores'] = []
   const desajustes: Desajuste[] = []
   let acumulado = 0
-  let levFila: number | null = null
   for (const { n, f } of cuerpo) {
     if (trades.length + errores.length >= MAX_FILAS) {
       errores.push({ fila: n, motivo: `Máximo ${MAX_FILAS} filas por importación` })
       break
     }
     const levF = iTrade >= 0 ? leerApalancamiento(f[iTrade]) : null
-    levFila = levFila ?? levF
     const lev = levF ?? levCab ?? undefined
     const entrada = aNumero(f[iEnt])
     const salida = iSal >= 0 && f[iSal] != null && f[iSal] !== '' ? aNumero(f[iSal]) : NaN
@@ -105,7 +105,7 @@ export function filasATrades(filas: unknown[][], moneda: Moneda): ResultadoTrade
     if (r.success) trades.push(r.data)
     else errores.push({ fila: n, motivo: r.error.issues[0].message })
   }
-  return { trades, errores, apalancamiento: levCab ?? levFila, hayHistorico: iHist >= 0, desajustes }
+  return { trades, errores, apalancamiento: levCab, conApalancamiento: trades.filter((t) => t.apalancamiento != null).length, hayHistorico: iHist >= 0, desajustes }
 }
 
 export const leerArchivoTrades = (buf: ArrayBuffer, moneda: Moneda): ResultadoTrades => leerArchivoCon(buf, (filas) => filasATrades(filas, moneda))

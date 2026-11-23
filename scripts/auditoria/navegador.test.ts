@@ -344,6 +344,11 @@ describe(`auditoría en navegador (${NOMBRE})`, () => {
     comparar('Trading · ficha del último cerrado', 'Total tras este trade (BTC)', ficha.match(/Total tras este trade ([−+-]?[\d,]+) BTC/)![1], ult.acumulado, 8)
     comparar('Trading · ficha del último cerrado', 'Vale hoy (€)', ficha.match(/Vale hoy ([−+-]?[\d.,]+) €/)![1], ult.valeHoy, 2)
     comparar('Trading · ficha del último cerrado', 'Valía al cerrar (€)', ficha.match(/Valía al cerrar ([−+-]?[\d.,]+) €/)![1], ult.valia, 2)
+    // El margen destinado y la nota (informativos) se ven en el detalle y no cambian ninguna cifra (las de arriba ya coinciden con el control)
+    const dest = trades.find((x: { id: string }) => x.id === 'demo-t13') as { margenDestinado?: number; nota?: string } | undefined
+    expect(dest?.margenDestinado).toBeGreaterThan(0)
+    igual('Trading · ficha', 'Muestra «Margen destinado»', /Margen destinado 0,08 BTC/.test(ficha) ? 'sí' : 'no', 'sí')
+    igual('Trading · ficha', 'Muestra la nota del trade', ficha.includes(dest!.nota!) ? 'sí' : 'no', 'sí')
     await page.keyboard.press('Escape')
     await captura('trading')
   })

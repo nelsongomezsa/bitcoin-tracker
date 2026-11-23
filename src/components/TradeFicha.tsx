@@ -29,6 +29,7 @@ export default function TradeFicha({ fila, onEditar, onDuplicar, onBorrar, onGra
           {dato(c.abierto ? 'Precio actual' : 'Salida', dinero(c.precioReferencia, t.moneda, 0))}
           {dato('Duración', `${diasEntre(t.fechaInicio, fin)} d`)}
           {dato('Margen', t.margenBTC != null ? v.btcF(t.margenBTC) : '—')}
+          {t.margenDestinado != null && dato('Margen destinado', v.btcF(t.margenDestinado))}
           {dato('Comisiones', t.comisiones != null ? `${String(t.comisiones).replace('.', ',')} %` : '—')}
           {dato('Plataforma', t.plataforma ?? '—')}
         </div>

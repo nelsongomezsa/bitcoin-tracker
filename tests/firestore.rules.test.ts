@@ -375,3 +375,18 @@ describe('trades: apalancamiento opcional y % a mano', () => {
     await assertFails(crear(base({ pctManual: '15' })))
   })
 })
+
+describe('trades: margen destinado y nota', () => {
+  const base = (extra: Record<string, unknown> = {}) => ({ estado: 'abierto', direccion: 'largo', fechaInicio: '2025-03-01', precioEntrada: 80000, moneda: 'USD', creado: serverTimestamp(), ...extra })
+  let k = 0
+  const crear = (d: Record<string, unknown>) => setDoc(doc(ana(), `users/ana/trades/m${k++}`), d)
+  it('margen destinado opcional, positivo y menor de 21 millones de BTC', async () => {
+    await assertSucceeds(crear(base()))
+    await assertSucceeds(crear(base({ margenDestinado: 0.15, nota: 'x10 con 0,15 BTC de margen' })))
+    for (const m of [0, -0.1, 21000000, '0.15', true]) await assertFails(crear(base({ margenDestinado: m })))
+  })
+  it('la nota sigue limitada a 200 caracteres', async () => {
+    await assertSucceeds(crear(base({ nota: 'x'.repeat(200) })))
+    await assertFails(crear(base({ nota: 'x'.repeat(201) })))
+  })
+})

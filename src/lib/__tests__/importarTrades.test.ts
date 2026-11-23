@@ -122,3 +122,61 @@ describe('CSV: las fechas dd/mm/aaaa no se leen como americanas', () => {
     expect(r.desajustes).toEqual([])
   })
 })
+
+import * as XLSX from 'xlsx'
+describe('Excel con rarezas: se ignoran sin fallar (datos inventados)', () => {
+  // Hoja con la forma de un registro real: título, cabecera en la fila 3 con una celda de error (#VALUE!) en la J,
+  // una columna de mes sin cabecera (I), notas sueltas en la J, columnas de resumen a la derecha (K, L) y un resumen debajo de la tabla.
+  function libro(conErrorEnDatos = false): ArrayBuffer {
+    const filas: unknown[][] = [
+      ['REGISTRO DE TRADES'],
+      [],
+      ['Trade #', 'Fecha inicio', 'Fecha cierre', 'Precio entrada (USD)', 'Precio salida (USD)', '% ganancia', 'Total ganado (BTC)', 'Total historico', null, null, '% TOTAL', 'TOTAL   EN   USD'],
+      ['1. x5', 45292, 45294, 50000, 51000, 0.1, 0.002, 0.002, 'ene', 'nota suelta', 0.15, 0],
+      [2, 45294, 45295, 51000, 50500, 0.05, 0.001, 0.003, 'ene'],
+      [3, 45296, 45296, 50500, 51500, 0.2, 0.0005, 0.0035, null, 'otra nota'], // mes vacío
+      [],
+      ['Trades ganadores', 3],
+      ['Total ganado (BTC)', 0.0035],
+    ]
+    const ws = XLSX.utils.aoa_to_sheet(filas)
+    ws.J3 = { t: 'e', v: 15, w: '#VALUE!' } // la cabecera de la columna J es un error de fórmula
+    ws.J5 = { t: 'e', v: 15, w: '#VALUE!' }
+    if (conErrorEnDatos) ws.H5 = { t: 'e', v: 15, w: '#VALUE!' } // «Total historico» de la fila 2 con un error de fórmula
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Trades')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Cómo usar el Excel'], ['1. Cada fila representa un trade']]), 'Instrucciones')
+    const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+    return out
+  }
+  it('importa las filas, ignora el mes vacío, las notas de la columna J y los #VALUE!', () => {
+    const r = leerArchivoTrades(libro(), 'USD')
+    expect(r.errores).toEqual([])
+    expect(r.trades).toHaveLength(3)
+    expect(r.trades.map((t) => t.pctManual)).toEqual([10, 5, 20])
+    expect(r.trades.map((t) => t.btcGanadoManual)).toEqual([0.002, 0.001, 0.0005])
+    expect(r.hayHistorico).toBe(true)
+    expect(r.desajustes).toEqual([])
+  })
+  it('lee «1. x5» como el trade 1 con apalancamiento x5; los demás quedan sin él', () => {
+    const r = leerArchivoTrades(libro(), 'USD')
+    expect(r.trades[0].apalancamiento).toBe(5)
+    expect(r.trades.slice(1).every((t) => t.apalancamiento === undefined)).toBe(true)
+    expect(r.conApalancamiento).toBe(1)
+    expect(r.apalancamiento).toBeNull() // no viene en la cabecera
+  })
+  it('las fechas del Excel (números de serie) se leen bien', () => {
+    const r = leerArchivoTrades(libro(), 'USD')
+    expect(r.trades[0].fechaInicio).toBe('2024-01-01') // número de serie 45292 de Excel
+    expect(r.trades[0].fechaCierre).toBe('2024-01-03')
+  })
+  it('una celda de error en una columna de datos cuenta como vacía (no como el número 15)', () => {
+    const r = leerArchivoTrades(libro(true), 'USD')
+    expect(r.errores).toEqual([])
+    expect(r.trades).toHaveLength(3)
+    expect(r.desajustes).toEqual([]) // esa fila no se compara; las demás siguen cuadrando
+  })
+  it('un nombre de hoja con otros textos debajo de la tabla no se confunde con trades', () => {
+    expect(leerArchivoTrades(libro(), 'USD').trades).toHaveLength(3)
+  })
+})

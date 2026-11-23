@@ -52,6 +52,7 @@ export function tradesDemo(hoy = Date.now()): Trade[] {
       id: `demo-t${i + 1}`, estado: 'cerrado', direccion: dir, fechaInicio: iso(hoy - ini * DIA), fechaCierre: iso(hoy - (ini - dur) * DIA),
       precioEntrada: entrada, precioSalida: salida, moneda: 'USD', apalancamiento: lev, margenBTC: margen, comisiones: com, plataforma: 'Exchange demo',
       ...(i >= 11 ? { horaInicio: '10:05', horaCierre: '16:40' } : {}),
+      ...(i === 12 ? { margenDestinado: 0.08, nota: 'x3 con 0,08 BTC de margen' } : {}),
     }
   })
   const abiertos: Trade[] = [

@@ -192,7 +192,7 @@ export default function Ajustes() {
           <input ref={archivoTrades} type="file" accept=".xlsx,.xls,.csv" aria-label="Archivo de trades a importar" onChange={(e) => void elegirArchivoTrades(e.target.files?.[0])} />
           {prevT && (
             <div className="stack">
-              <h3>Previsualización: {prevT.trades.length} trades válidos, {prevT.errores.length} con errores{prevT.apalancamiento ? ` · apalancamiento x${prevT.apalancamiento}` : ''}</h3>
+              <h3>Previsualización: {prevT.trades.length} trades válidos, {prevT.errores.length} con errores{prevT.apalancamiento ? ` · apalancamiento x${prevT.apalancamiento}` : prevT.conApalancamiento > 0 ? ` · ${prevT.conApalancamiento} con apalancamiento` : ''}</h3>
               {prevT.hayHistorico && (prevT.desajustes.length === 0
                 ? <p className="notice" role="status">✓ La suma acumulada de «Total ganado» coincide con «Total histórico» en todas las filas.</p>
                 : (

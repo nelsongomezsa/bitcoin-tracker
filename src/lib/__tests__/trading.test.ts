@@ -184,3 +184,19 @@ describe('resumen por mes de cierre', () => {
     expect(total).toBeCloseTo(totalesTrading(lote, P, 'USD').neto, 12)
   })
 })
+
+describe('margen destinado (solo informativo)', () => {
+  it('no cambia ningún cálculo: el resultado de cada trade y los totales son idénticos con y sin él', () => {
+    const base = [t({ id: '1', pctManual: 12, margenBTC: 0.05 }), t({ id: '2', fechaCierre: '2025-03-05', precioSalida: 78000, margenBTC: 0.05 }), t({ id: '3', estado: 'abierto', fechaCierre: undefined, precioSalida: undefined })]
+    const con = base.map((x) => ({ ...x, margenDestinado: 0.15, nota: 'x10 con 0,15 BTC de margen' }))
+    const nums = (x: ReturnType<typeof totalesTrading>) => ({ ...x, mejor: x.mejor?.calculo, peor: x.peor?.calculo })
+    expect(nums(totalesTrading(con, P, 'USD'))).toEqual(nums(totalesTrading(base, P, 'USD')))
+    expect(filasTrades(con, P, 'USD').map((f) => f.calculo)).toEqual(filasTrades(base, P, 'USD').map((f) => f.calculo))
+  })
+  it('el esquema lo acepta opcional y entre 0 y 21 millones', () => {
+    const ok = { estado: 'abierto', direccion: 'largo', fechaInicio: '2025-03-01', precioEntrada: 100 }
+    expect(tradeSchema.safeParse(ok).success).toBe(true)
+    expect(tradeSchema.parse({ ...ok, margenDestinado: 0.15, nota: 'x10 con 0,15 BTC de margen' }).margenDestinado).toBe(0.15)
+    for (const mal of [0, -1, 21_000_000, 'x']) expect(tradeSchema.safeParse({ ...ok, margenDestinado: mal }).success, String(mal)).toBe(false)
+  })
+})

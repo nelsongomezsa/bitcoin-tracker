@@ -36,6 +36,7 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
     btcManual: inicial?.btcGanadoManual != null ? String(inicial.btcGanadoManual) : '',
     plataforma: inicial ? (inicial.plataforma ?? '') : ultimaPlataforma(),
     nota: inicial?.nota ?? '',
+    margenDestinado: inicial?.margenDestinado != null ? String(inicial.margenDestinado) : '',
     horaInicio: inicial?.horaInicio ?? '',
     horaCierre: inicial?.horaCierre ?? '',
   })
@@ -55,6 +56,7 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
       ...(Number.isFinite(aNum(f.pct)) ? { pctManual: aNum(f.pct) } : {}),
       ...(Number.isFinite(aNum(f.btcManual)) ? { btcGanadoManual: aNum(f.btcManual) } : {}),
       ...(f.plataforma.trim() ? { plataforma: f.plataforma } : {}), ...(f.nota.trim() ? { nota: f.nota } : {}),
+      ...(Number.isFinite(aNum(f.margenDestinado)) ? { margenDestinado: aNum(f.margenDestinado) } : {}),
       ...(f.horaInicio ? { horaInicio: f.horaInicio } : {}), ...(cerrado && f.horaCierre ? { horaCierre: f.horaCierre } : {}),
     })
     return r
@@ -141,7 +143,7 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
         </div>
 
         <div className="grid2">
-          <label>Margen en BTC (opcional)<input inputMode="decimal" value={f.margenBTC} onChange={set('margenBTC')} placeholder="0,05" /></label>
+          <label>Margen para la sugerencia (BTC)<input inputMode="decimal" value={f.margenBTC} onChange={set('margenBTC')} placeholder="0,05" /></label>
           <label>Comisiones % (opcional)<input inputMode="decimal" value={f.comisiones} onChange={set('comisiones')} placeholder="0,4" /></label>
         </div>
 
@@ -163,7 +165,9 @@ export default function TradeSheet({ inicial, plantilla, onCerrar }: Props) {
           <input list="plataformas-trading" maxLength={40} value={f.plataforma} onChange={set('plataforma')} />
           <datalist id="plataformas-trading">{PLATAFORMAS.map((p) => <option key={p} value={p} />)}</datalist>
         </label>
-        <label>Nota (opcional, máx. 200)<input value={f.nota} maxLength={200} onChange={set('nota')} /></label>
+        <label>Margen destinado (BTC, opcional)<input inputMode="decimal" value={f.margenDestinado} onChange={set('margenDestinado')} placeholder="0,15" /></label>
+        <label>Nota (opcional, máx. 200)<input value={f.nota} maxLength={200} onChange={set('nota')} placeholder="Ej.: x10 con 0,15 BTC de margen" /></label>
+        <p className="notice">El margen destinado y la nota son solo para recordar cómo montaste el trade: no cambian ningún cálculo.</p>
 
         {vista && (
           <div className="card stack" aria-live="polite">

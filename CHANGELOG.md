@@ -5,6 +5,8 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 ## 23 de noviembre de 2026
 
 ### Trading (nuevo apartado)
+- **Margen destinado (opcional):** cada trade puede llevar el margen en BTC que le destinaste y una nota libre (por ejemplo, «x10 con 0,15 BTC de margen»). Se ve en el detalle del trade, se exporta y **no cambia ningún cálculo**. El «margen para la sugerencia» del formulario es otro campo: solo sirve para proponer los BTC ganados.
+- **Importar el Excel original:** se ignoran sin fallar las celdas de error (#VALUE!), las notas sueltas, los textos de resumen bajo la tabla y las columnas sin cabecera (como un mes vacío). «1. x5» en la columna Trade se lee como el trade 1 con apalancamiento x5, y los demás trades quedan sin apalancamiento. La vista previa indica cuántos trades traen apalancamiento.
 - **Dónde está:** aparece por defecto en la barra de abajo (Inicio · Mercado · ＋ · Trading · Ajustes). Quien no lo quiera lo apaga en Ajustes → Apariencia; en ese caso la barra vuelve a llevar Estadísticas, que también se alcanza desde una tarjeta de Inicio.
 - **El botón ＋** abre una hoja con «Apuntar compra», «Apuntar venta» y «Nuevo trade».
 - **Un trade** es una operación de entrada y salida, larga (gana si el precio sube) o corta (gana si baja). Se guarda con fechas, precios, moneda (USD, EUR o AUD), margen en BTC, comisiones, plataforma y nota. El apalancamiento es opcional y va por trade.
@@ -51,7 +53,7 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 - **Calculadora de control** independiente de la app, con aritmética decimal exacta, para comprobar los cálculos de compras, FIFO, plan, calculadoras, avisos y trading.
 - **Tests de propiedades:** cientos de carteras y de conjuntos de trades aleatorios, y reglas que siempre deben cumplirse (por ejemplo, que el neto es lo ganado menos lo perdido).
 - **Cuenta vacía:** una pasada completa en el móvil con una cuenta sin compras, ventas ni trades (demo vacía y, con `npm run auditoria:vacia`, un usuario nuevo en el emulador de Firebase). Comprueba sin errores en consola, un solo gráfico por pantalla, que el gráfico de Inicio no se rehace con 30 segundos de precio en vivo y que «Abrir gráfico pro» abre.
-- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **327 comprobaciones, 0 diferencias**. Además hay **220 tests automáticos** y **49 tests de las reglas de seguridad** de la base de datos.
+- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **329 comprobaciones, 0 diferencias**. Además hay **230 tests automáticos** y **51 tests de las reglas de seguridad** de la base de datos.
 
 ## 22 de noviembre de 2026
 

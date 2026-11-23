@@ -25,6 +25,8 @@ export interface Trade {
   btcGanadoManual?: number
   plataforma?: string
   nota?: string
+  /** Margen destinado al trade (BTC), solo informativo: no entra en ningún cálculo. */
+  margenDestinado?: number
   /** Horas opcionales (HH:MM, 24 h) de la entrada y de la salida. */
   horaInicio?: string
   horaCierre?: string

@@ -104,6 +104,7 @@ export const tradeSchema = z
     btcGanadoManual: z.number({ message: 'Introduce un número' }).gt(-21_000_000).lt(21_000_000).optional(),
     plataforma: textoCorto(40).regex(/^[\p{L}\p{N} .,&'+_-]*$/u, 'Solo letras, números y signos sencillos').optional(),
     nota: textoCorto(200).optional(),
+    margenDestinado: z.number({ message: 'Introduce un número' }).gt(0, 'El margen debe ser mayor que 0').lt(21_000_000).optional(),
     horaInicio: horaOpcionalSchema,
     horaCierre: horaOpcionalSchema,
   })
