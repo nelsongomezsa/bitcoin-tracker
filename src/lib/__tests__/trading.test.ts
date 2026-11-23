@@ -200,3 +200,14 @@ describe('margen destinado (solo informativo)', () => {
     for (const mal of [0, -1, 21_000_000, 'x']) expect(tradeSchema.safeParse({ ...ok, margenDestinado: mal }).success, String(mal)).toBe(false)
   })
 })
+
+import { temporalidadParaTrade } from '../trading'
+describe('temporalidad para ver un trade en el gráfico', () => {
+  it('5m si es de hoy o ayer, 1h hasta 28 días, 1D si es más antiguo', () => {
+    expect(temporalidadParaTrade('2025-03-10', '2025-03-10')).toBe('5m')
+    expect(temporalidadParaTrade('2025-03-09', '2025-03-10')).toBe('5m')
+    expect(temporalidadParaTrade('2025-03-05', '2025-03-10')).toBe('1h')
+    expect(temporalidadParaTrade('2025-02-10', '2025-03-10')).toBe('1h')
+    expect(temporalidadParaTrade('2025-02-09', '2025-03-10')).toBe('1D')
+  })
+})

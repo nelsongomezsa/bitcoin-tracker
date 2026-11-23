@@ -396,6 +396,17 @@ export interface PuntoCartera {
 const dia = (t: number) => new Date(t).toISOString().slice(0, 10)
 
 /** Valor de la cartera frente al dinero metido a lo largo del tiempo. */
+/**
+ * Valor de la cartera por días en los últimos `dias` días del histórico, solo desde la primera compra.
+ * Devuelve [] (no hay nada que pintar) si no hay compras, si hay menos de 3 días de historia o si el valor no varía (sería una recta).
+ */
+export function valorPorDias(ops: Operacion[], historico: PuntoPrecio[], dias = 31): number[] {
+  if (!ops.some((o) => o.tipo === 'compra')) return []
+  let valores: number[]
+  try { valores = serieCartera(ops, historico.slice(-dias)).map((p) => p.valor) } catch { return [] }
+  return valores.length >= 3 && Math.max(...valores) > Math.min(...valores) ? valores : []
+}
+
 export function serieCartera(ops: Operacion[], historico: PuntoPrecio[]): PuntoCartera[] {
   const orden = ordenarPorFecha(ops)
   const salida: PuntoCartera[] = []

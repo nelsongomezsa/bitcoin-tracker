@@ -6,7 +6,7 @@ import { actualizarExtremos } from './mercado/extremos.mjs'
 import { infoRed } from './mercado/red.mjs'
 import { bloquesNuevos, mezclarMovimientos } from './mercado/ballenas.mjs'
 import { INTERVALO_MS, consultarCarteras, detectarCambios } from './mercado/carteras.mjs'
-import { clavesPendientes, guardarVelas } from './mercado/kraken.mjs'
+import { guardarVelas } from './mercado/kraken.mjs'
 import { readFileSync } from 'node:fs'
 
 const leerJson = (ruta) => JSON.parse(readFileSync(new URL(ruta, import.meta.url), 'utf8'))
@@ -63,8 +63,8 @@ async function main() {
   }
   console.log('Precio actualizado')
 
-  // Velas de Kraken (API pública, sin clave): 15m y 1h cada vez; 4h, 1d y 1w al empezar cada franja de 4 h.
-  await guardarVelas({ db, FieldValue, getJson, claves: clavesPendientes(ahora) })
+  // Velas de Kraken (API pública, sin clave): 15m en cada pasada y el resto según su antigüedad (1h, 4h, 1d y 1w).
+  await guardarVelas({ db, FieldValue, getJson, ahora })
 
   // Ballenas: bloques nuevos con transacciones grandes (mempool.space).
   const cfgBallenas = leerJson('./config/ballenas.json')

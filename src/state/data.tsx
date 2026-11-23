@@ -252,7 +252,8 @@ export function useMercadoDoc<T = Record<string, unknown>>(id: string): T | null
   const { demo } = useAuth()
   const [datos, setDatos] = useState<T | null>(null)
   useEffect(() => {
-    if (!id) { setDatos(null); return } // sin documento (p. ej. 1m y 5m vienen en directo)
+    setDatos(null) // al cambiar de documento no se queda el anterior (p. ej. al cambiar de temporalidad)
+    if (!id) return // sin documento (p. ej. 1m y 5m vienen en directo)
     if (demo) {
       const d: Record<string, unknown> = { velas_15m: velasSinteticas(15), velas_1h: velasSinteticas(60), velas_4h: velasSinteticas(240), velas_1d: velasSinteticas(1440), velas_1w: velasSinteticas(10080), velas: velasDemo(), fng: fngDemo(), global: GLOBAL_DEMO, red: RED_DEMO, ...demoExtra() }
       setDatos((d[id] as T) ?? null)

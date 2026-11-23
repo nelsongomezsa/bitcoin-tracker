@@ -9,6 +9,7 @@ import OperacionSheet from '../components/OperacionSheet'
 import ErrorBoundary from '../components/ErrorBoundary'
 import GraficoVelas from '../components/GraficoVelas'
 import FilaRendimiento from '../components/FilaRendimiento'
+import { useStats24h } from '../hooks/useStats24h'
 
 const GAIN = '#1FBF8A', LOSS = '#F0465A'
 
@@ -20,12 +21,11 @@ function Grafico() {
   const [hoja, setHoja] = useState<null | 'compra' | 'venta'>(null)
   const { moneda, precios, res } = v
   const monedaKraken: 'EUR' | 'USD' = moneda === 'USD' ? 'USD' : 'EUR'
-  const factor = moneda === 'AUD' && precios ? precios.AUD / precios.EUR : 1
 
   const precio = precios?.[moneda] ?? 0
+  const stats = useStats24h(moneda)
   const tick = v.ticks24h[monedaKraken]
   const cambio24 = tick && Number.isFinite(tick.cambioPct) ? tick.cambioPct / 100 : (v.mercado?.cambio24h ?? 0)
-  const factorK = moneda === 'AUD' ? factor : 1
   const dato = (k: string, val: string) => <div className="stat"><span className="muted" style={{ fontSize: 11 }}>{k}</span><span className="num" style={{ fontSize: 13 }}>{val}</span></div>
 
   return (
@@ -45,15 +45,15 @@ function Grafico() {
             <div className={`num ${claseSigno(cambio24)}`}>{flecha(cambio24)} {porcentajeConSigno(cambio24)} <span className="muted" style={{ fontSize: 12 }}>hoy</span></div>
           </div>
           <div className="grid2" style={{ gap: 6, textAlign: 'right' }}>
-            {dato('Máx. 24h', tick && Number.isFinite(tick.high) ? dinero(tick.high * factorK, moneda, 0) : '—')}
-            {dato('Mín. 24h', tick && Number.isFinite(tick.low) ? dinero(tick.low * factorK, moneda, 0) : '—')}
-            {dato('Vol. 24h', tick && Number.isFinite(tick.volume) ? `${Math.round(tick.volume).toLocaleString('es-ES')} BTC` : '—')}
+            {dato('Máx. 24h', stats ? dinero(stats.high, moneda, 0) : '—')}
+            {dato('Mín. 24h', stats ? dinero(stats.low, moneda, 0) : '—')}
+            {dato('Vol. 24h', stats ? `${Math.round(stats.volume).toLocaleString('es-ES')} BTC` : '—')}
             {dato('Tu media', res && res.btc > 0 ? v.$(res.precioMedioReal) : '—')}
           </div>
         </div>
       </section>
 
-      <GraficoVelas tfInicial={inicial} />
+      <GraficoVelas tfInicial={inicial} tradeDestacado={params.get('trade') ?? undefined} />
 
       <section className="card stack" aria-label="Rendimiento por periodos">
         <h2>Rendimiento</h2>

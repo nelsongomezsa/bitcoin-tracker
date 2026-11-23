@@ -76,9 +76,29 @@ async function nuevoMovil(opciones: { demoVacia: boolean }): Promise<{ ctx: Brow
   })
   page.on('pageerror', (e) => errores.push(`PAGEERR ${e.message.slice(0, 160)}`))
   await page.addInitScript(SIMULAR_DIRECTO)
+  await simularKrakenRest(page)
   if (opciones.demoVacia) await page.addInitScript(() => { localStorage.setItem('demo-vacia', '1'); localStorage.setItem('demo-directo', '1') })
   return { ctx, page, errores }
 }
+
+/** Kraken simulado por REST (velas y ticker), para que las pruebas no dependan de la red. */
+async function simularKrakenRest(page: Page) {
+  await page.route('https://api.kraken.com/**', (r) => {
+    const u = new URL(r.request().url())
+    if (u.pathname.endsWith('/Ticker')) {
+      return r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: [], result: {
+        XXBTZEUR: { h: ['91000.0', '92500.5'], l: ['89000.0', '88000.25'], v: ['500.1', '1234.56'] },
+        XXBTZUSD: { h: ['99000.0', '101000.0'], l: ['96000.0', '95000.0'], v: ['800.5', '2100.5'] },
+        XBTAUD: { h: ['150000.0', '152000.0'], l: ['145000.0', '144000.0'], v: ['20.5', '55.25'] },
+      } }) })
+    }
+    const paso = Number(u.searchParams.get('interval') ?? '60') * 60
+    const fin = Math.floor(Date.now() / 1000 / paso) * paso
+    const filas = Array.from({ length: 150 }, (_, i) => { const t = fin - (149 - i) * paso, c = 60000 + Math.sin(i / 9) * 1500; return [t, String(c * 0.999), String(c * 1.004), String(c * 0.996), String(c), String(c), String(10 + (i % 7)), 5] })
+    return r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: [], result: { XXBTZEUR: filas, last: fin } }) })
+  })
+}
+const velasDe = (page: Page) => page.evaluate(() => { const e = document.querySelector('[data-velas]'); return { n: Number(e?.getAttribute('data-velas') ?? 0), origen: e?.getAttribute('data-origen') ?? '' } })
 
 const graficos = (page: Page) => page.evaluate(() => document.querySelectorAll('.tv-lightweight-charts').length)
 const creados = (page: Page) => page.evaluate(() => (window as unknown as { __creados: number }).__creados)
@@ -89,6 +109,8 @@ const irA = async (page: Page, ruta: string) => { await page.evaluate((h) => { h
 async function recorrer(page: Page, errores: string[], etiqueta: string, { esperaHistorico }: { esperaHistorico: boolean }) {
   await page.waitForSelector('section[aria-label="Saldo"]', { timeout: 20000 })
   await page.waitForTimeout(1500)
+  // Cuenta vacía: «Valor actual» es 0 y no hay minigráfico (sería una línea inventada)
+  expect(await page.locator('svg[aria-label^="Valor de la cartera"]').count(), `${etiqueta}: sin minigráfico de valor con la cartera vacía`).toBe(0)
 
   // ── Inicio: estado vacío claro ──
   const vacio = page.locator('section[aria-label="Sin operaciones"]')
@@ -121,15 +143,28 @@ async function recorrer(page: Page, errores: string[], etiqueta: string, { esper
   const enlace = page.getByRole('link', { name: 'Abrir gráfico pro' })
   expect(await enlace.count(), `${etiqueta}: enlace «Abrir gráfico pro»`).toBe(1)
   await enlace.scrollIntoViewIfNeeded()
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  expect(await page.evaluate(() => window.scrollY), `${etiqueta}: Inicio está desplazado hacia abajo`).toBeGreaterThan(0)
   await enlace.tap()
   await page.waitForSelector('section[aria-label="Tu posición"]', { timeout: 10000 })
   expect(new URL(page.url()).pathname, `${etiqueta}: ruta del gráfico pro`).toBe('/grafico')
   await page.waitForTimeout(1500)
+  expect(await page.evaluate(() => window.scrollY), `${etiqueta}: /grafico se abre arriba del todo`).toBe(0)
   expect(await page.getByText('Todavía no tienes BTC apuntados').count()).toBe(1)
   expect(await page.getByRole('button', { name: 'Apuntar compra' }).count()).toBe(1)
   expect(await graficos(page), `${etiqueta}: gráficos en el gráfico pro`).toBe(1)
-  // El gráfico pro sigue siendo un solo gráfico tras cambiar de temporalidad
-  for (const tf of ['4h', '1S', '1D']) { await page.getByRole('button', { name: tf, exact: true }).tap(); await page.waitForTimeout(600) }
+  // Cada temporalidad tiene velas (del servidor o, si no están guardadas, de Kraken por REST) y sigue habiendo un solo gráfico
+  for (const tf of ['1m', '5m', '15m', '1h', '4h', '1D', '1S']) {
+    await page.getByRole('button', { name: tf, exact: true }).tap()
+    await page.waitForFunction(() => Number(document.querySelector('[data-velas]')?.getAttribute('data-velas') ?? 0) > 0, null, { timeout: 15000 }).catch(() => undefined)
+    const d = await velasDe(page)
+    expect(d.n, `${etiqueta}: la temporalidad ${tf} tiene velas (origen: ${d.origen})`).toBeGreaterThan(0)
+    expect(await graficos(page), `${etiqueta}: un solo gráfico en ${tf}`).toBe(1)
+  }
+  // Máx., mín. y volumen de 24 h con datos (ticker de Kraken)
+  const cab = (await page.locator('section[aria-label="Precio"]').innerText()).replace(/\s+/g, ' ')
+  expect(cab, `${etiqueta}: Máx./Mín./Vol. 24h con datos`).not.toMatch(/(Máx|Mín|Vol)\. 24h —/)
+  expect(cab).toMatch(/Máx\. 24h [\d.]+ €/)
   expect(await graficos(page), `${etiqueta}: gráficos en el gráfico pro tras cambiar de temporalidad`).toBe(1)
 
   // ── Mercado, Trading y Ajustes ──

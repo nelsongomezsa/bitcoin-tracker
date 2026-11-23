@@ -284,3 +284,9 @@ export function desgloseCartera(res: { btc: number; valorHoy: number; precioMedi
   const cartera = { btc: res.btc, valor: res.valorHoy }
   return { cartera, trading, total: { btc: cartera.btc + trading.btc, valor: cartera.valor + trading.valor }, precioMedio: res.precioMedioReal }
 }
+
+/** Temporalidad con la que abrir el gráfico de un trade para que se vea su entrada: 5m si es de hoy o ayer, 1h hasta unas 4 semanas y 1D si es más antiguo. */
+export function temporalidadParaTrade(fechaInicio: string, hoy: string): '5m' | '1h' | '1D' {
+  const d = diasEntre(fechaInicio, hoy)
+  return d <= 1 ? '5m' : d <= 28 ? '1h' : '1D'
+}

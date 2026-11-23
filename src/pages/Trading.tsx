@@ -8,7 +8,7 @@ import Sparkline from '../components/Sparkline'
 import TradeSheet from '../components/TradeSheet'
 import TradeFicha from '../components/TradeFicha'
 import TradingGraficas from '../components/TradingGraficas'
-import { etiquetaTrade, filasTrades, resumenPorMes, type FilaTrade, type Trade } from '../lib/trading'
+import { etiquetaTrade, filasTrades, resumenPorMes, temporalidadParaTrade, type FilaTrade, type Trade } from '../lib/trading'
 import { claseSigno, fechaConHora, fechaCorta, flecha, hoyISO, dinero, OCULTO } from '../lib/format'
 import { mensajeError } from '../lib/errores'
 import { MONEDAS } from '../lib/schemas'
@@ -198,7 +198,7 @@ export default function Trading() {
           onCerrar={() => setFicha(null)}
           onEditar={() => { const t = original(ficha.trade.id); setFicha(null); setHoja({ trade: t }) }}
           onDuplicar={() => duplicar(ficha.trade)}
-          onGrafico={() => nav('/grafico?tf=5m')}
+          onGrafico={() => nav(`/grafico?tf=${temporalidadParaTrade(ficha.trade.fechaInicio, hoyISO())}&trade=${encodeURIComponent(ficha.trade.id)}`)}
           onBorrar={() => { setBorrar(ficha.trade); setFicha(null) }}
         />
       )}

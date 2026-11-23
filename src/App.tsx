@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './state/auth'
 import { DataProvider } from './state/data'
@@ -19,6 +19,13 @@ const Ajustes = lazy(() => import('./pages/Ajustes'))
 const Calculadoras = lazy(() => import('./pages/Calculadoras'))
 import Bloqueo from './components/Bloqueo'
 
+/** Al entrar en cada ruta, la página empieza arriba (no conserva el scroll de la pantalla anterior). */
+function ScrollArriba() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 export default function App() {
   const { user, demo, cargando } = useAuth()
   const { pathname } = useLocation()
@@ -35,6 +42,7 @@ export default function App() {
   return (
     <Bloqueo>
     <DataProvider>
+      <ScrollArriba />
       <ErrorBoundary key={pathname} etiqueta="Esta pantalla">
       <Suspense fallback={<main className="app"><p className="muted" role="status">Cargando…</p></main>}>
       <Routes>

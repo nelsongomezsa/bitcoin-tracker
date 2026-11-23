@@ -18,6 +18,9 @@ Durante meses vi a alguien de mi entorno llevar sus compras de bitcoin en un Exc
 Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.md).
 
 ### 23 de noviembre de 2026
+- **Gráfico pro con todas las temporalidades.** 1D y 1S salían vacíos porque el servidor solo refrescaba esas velas en una franja horaria que casi nunca coincidía con sus ejecuciones. Ahora las refresca según su antigüedad, con pausas entre peticiones a Kraken; y mientras falte alguna temporalidad, la app la pide directamente a Kraken en lugar de dejar el gráfico vacío.
+- **Gráfico pro más limpio.** Las marcas que se solapan se agrupan en un marcador con el número, «Mis trades» va oculto por defecto en 1D y 1S y la línea punteada entrada-salida solo aparece para el trade seleccionado. Máx., Mín. y Vol. de 24 h se rellenan con el ticker de Kraken (también en la demo).
+- **Pequeños arreglos.** Cada pantalla se abre arriba del todo; al cambiar a una temporalidad sin datos se limpia la escala de precios; y en Inicio, el minigráfico de «Valor actual» solo aparece si hay compras y dibuja la evolución real del valor por días (si no hay, no se pinta nada).
 - **Sumar Trading a tu cartera, bien desglosado.** Con la opción «Sumar los BTC ganados con trades a mi cartera» (desactivada por defecto), Inicio muestra por separado «Cartera», «Trading (neto)» y «Total»; las pérdidas de Trading restan y el precio medio de tus compras no cambia.
 - **Test intermitente del histograma arreglado.** Un precio justo en el límite entre dos intervalos podía caer a veces en el intervalo anterior; ahora siempre va al que empieza ahí, y los datos aleatorios de la auditoría usan una semilla fija para que sea reproducible.
 - **Resultado en dinero en cada trade.** Apunta cuánto ganaste o perdiste en euros, dólares o dólares australianos (con signo menos si perdiste) y la app calcula los BTC con el precio de BTC de la vela de Kraken del cierre. Te enseña la cuenta antes de guardar, por ejemplo «−100 € → −0,00123001 BTC a 81.300 €/BTC», y puedes cambiar el precio o escribir los BTC a mano. Las pérdidas restan en el Total histórico, en «Por mes» y en Ganado, Perdido y Neto.
@@ -30,7 +33,7 @@ Lo más reciente primero. El detalle completo está en el [CHANGELOG](CHANGELOG.
 - **Vista simple o pro.** La vista pro, con tablas y un gráfico de velas tipo exchange, se activa en Ajustes o con el botón «PRO» de Inicio.
 - **Hora opcional** en compras, ventas y trades.
 - **Corrección:** las fechas día/mes/año de un CSV ya no se leen como fechas americanas.
-- **Auditoría de cálculos.** Una calculadora de control independiente, tests con carteras aleatorias y una auditoría en el navegador (ahora, 354 comprobaciones sin diferencias) confirman que las cifras de la pantalla son las correctas.
+- **Auditoría de cálculos.** Una calculadora de control independiente, tests con carteras aleatorias y una auditoría en el navegador (ahora, 374 comprobaciones sin diferencias) confirman que las cifras de la pantalla son las correctas.
 
 ### 22 de noviembre de 2026
 - **Ballenas, empresas y gobiernos con BTC** y carteras públicas que se pueden seguir, en la pestaña Mercado.

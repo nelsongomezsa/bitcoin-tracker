@@ -64,3 +64,25 @@ export function construirMarcas({ velas, ops, trades, moneda, precios, verCompra
   marcas.sort((a, b) => a.time - b.time)
   return { marcas, lineas }
 }
+
+export interface GrupoMarcas {
+  /** Vela donde se pinta el marcador del grupo (la de su primera marca). */
+  time: number
+  marcas: Marca[]
+}
+
+/**
+ * Agrupa marcas que se solaparían en pantalla: las que están a menos de `distanciaPx` de la primera marca del grupo (la posición en píxeles
+ * la da `xDe`; null si no se puede calcular, y entonces la marca va sola). Un grupo de varias se pinta como un solo marcador con el número.
+ * Las marcas deben venir ordenadas por tiempo; los grupos salen en ese mismo orden.
+ */
+export function agruparMarcas(marcas: Marca[], xDe: (time: number) => number | null, distanciaPx = 18): GrupoMarcas[] {
+  const grupos: (GrupoMarcas & { x: number | null })[] = []
+  for (const m of marcas) {
+    const x = xDe(m.time)
+    const ultimo = grupos.at(-1)
+    if (ultimo && x != null && ultimo.x != null && Math.abs(x - ultimo.x) < distanciaPx) ultimo.marcas.push(m)
+    else grupos.push({ time: m.time, marcas: [m], x })
+  }
+  return grupos.map(({ time, marcas: ms }) => ({ time, marcas: ms }))
+}

@@ -15,7 +15,7 @@ import { MONEDAS } from '../lib/schemas'
 import { btcConSigno, claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
 import { desgloseCartera, etiquetaTrade, filasTrades } from '../lib/trading'
 import DesgloseCartera from '../components/DesgloseCartera'
-import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
+import { convertir, filaCompra, ordenarPorFecha, proximoNivel, valorPorDias, type Operacion } from '../lib/calculos'
 
 const minutosDesde = (d: Date) => {
   const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
@@ -30,13 +30,9 @@ export default function Inicio() {
   const { res, precio, precios, moneda } = v
   const factor = precios ? precios[moneda] / precios.EUR : 1
 
-  // Sin ninguna compra no hay serie de cartera (sería todo ceros): el minigráfico enseña el precio de BTC.
-  const sinCompras = !v.ops.some((o) => o.tipo === 'compra')
-  const spark = useMemo(() => {
-    const h = v.historico.slice(-8).map((p) => ({ ...p, precio: p.precio * factor }))
-    if (sinCompras) return h.map((p) => p.precio)
-    try { return serieCartera(v.ops, h).map((p) => p.valor) } catch { return [] }
-  }, [v.historico, v.ops, factor, sinCompras])
+  // Evolución REAL del valor de la cartera, un punto por día, durante el último mes y solo desde la primera compra.
+  // Sin compras, o con menos de 3 días de historia o sin variación (sería una recta), no se pinta nada.
+  const spark = useMemo(() => valorPorDias(v.ops, v.historico.map((p) => ({ ...p, precio: p.precio * factor }))), [v.historico, v.ops, factor])
 
   if (v.cargando) return <main className="app"><Cabecera titulo="Inicio" /><InicioEsqueleto /></main>
   if (v.pro) return <InicioPro />
@@ -81,7 +77,7 @@ export default function Inicio() {
             <span key={m}>{i > 0 && ' · '}{v.privado ? OCULTO : dinero(convertir((res?.valorHoy ?? 0) + extraValor, moneda, m, precios ?? { EUR: 1, USD: 1, AUD: 1 }), m, 0)}</span>
           ))}
         </div>
-        {res && (sinCompras || !v.privado) && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} etiqueta={sinCompras ? 'Precio de BTC en los últimos 7 días' : undefined} /></div>}
+        {res && !v.privado && spark.length >= 3 && <div style={{ margin: '4px 0' }}><Sparkline valores={spark} etiqueta="Valor de la cartera por días en el último mes" /></div>}
         {res && (
           <div className={`mid ${claseSigno(res.ganancia + extraValor)}`}>
             {flecha(res.ganancia + extraValor)} {v.$s(res.ganancia + extraValor)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.invertido > 0 ? (res.ganancia + extraValor) / res.invertido : res.rentabilidad)})</span>

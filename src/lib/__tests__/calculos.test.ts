@@ -353,3 +353,29 @@ describe('histograma de compras: un valor justo en el límite va siempre al inte
     expect(histogramaCompras([], 1, 8).bins).toEqual([])
   })
 })
+
+import { valorPorDias } from '../calculos'
+describe('evolución del valor de la cartera por días (minigráfico de Inicio)', () => {
+  const DIA = 86_400_000
+  const base = Date.parse('2025-03-01T00:00:00Z')
+  const hist = (precios: number[]) => precios.map((precio, i) => ({ t: base + i * DIA, precio }))
+  const compra = (fecha: string): Operacion => ({ id: fecha, tipo: 'compra', fecha, cantidad: 1000, comision: 0, precio: 50000, moneda: 'EUR' }) // 0,02 BTC
+  it('un valor por día desde la primera compra: BTC × precio de cada día', () => {
+    const v = valorPorDias([compra('2025-03-02')], hist([50000, 52000, 51000, 55000, 54000]))
+    expect(v).toHaveLength(4) // el 1 de marzo todavía no había compra
+    expect(v.map((x) => Math.round(x))).toEqual([1040, 1020, 1100, 1080])
+  })
+  it('los días siguientes a una segunda compra suben por el BTC nuevo, no solo por el precio', () => {
+    const v = valorPorDias([compra('2025-03-01'), compra('2025-03-03')], hist([50000, 50000, 50000, 50000]))
+    expect(v.map((x) => Math.round(x))).toEqual([1000, 1000, 2000, 2000])
+  })
+  it('nada que pintar sin compras, con menos de 3 días o sin variación (una recta)', () => {
+    expect(valorPorDias([], hist([1, 2, 3, 4]))).toEqual([])
+    expect(valorPorDias([compra('2025-03-03')], hist([50000, 51000, 52000, 53000]))).toEqual([]) // solo 2 días de historia
+    expect(valorPorDias([compra('2025-03-01')], hist([50000, 50000, 50000, 50000]))).toEqual([]) // valor constante
+  })
+  it('solo mira los últimos días pedidos', () => {
+    const v = valorPorDias([compra('2025-03-01')], hist(Array.from({ length: 60 }, (_, i) => 50000 + i * 100)), 31)
+    expect(v).toHaveLength(31)
+  })
+})

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers,
   type IChartApi, type ISeriesApi, type ISeriesMarkersPluginApi, type Time, type UTCTimestamp,
@@ -6,17 +6,18 @@ import {
 import { useVista } from '../state/vista'
 import { useMercadoDoc } from '../state/data'
 import { suscribirOhlc } from '../lib/kraken'
-import { aVelas, DOC_VELAS, factorDesdeEur, fusionarVelas, mediaMovil, soloCambiaLaUltima, TEMPORALIDADES, velasCrecientes, type FilaVela, type Temporalidad, type Vela } from '../lib/velas'
-import { construirMarcas, type Marca } from '../lib/marcas'
+import { aVelas, DOC_VELAS, factorDesdeEur, fusionarVelas, mediaMovil, MINUTOS, soloCambiaLaUltima, TEMPORALIDADES, velasCrecientes, type FilaVela, type Temporalidad, type Vela } from '../lib/velas'
+import { agruparMarcas, construirMarcas, type GrupoMarcas, type Marca } from '../lib/marcas'
 import { velasSinteticas } from '../state/demoData'
 import { proximoNivel } from '../lib/calculos'
 import OperacionSheet from './OperacionSheet'
-import { registrarPrueba } from '../lib/pruebas'
+import { fijarPrueba, registrarPrueba } from '../lib/pruebas'
 import TradeSheet from './TradeSheet'
 
 const IND = [['ma7', 'MA(7)'], ['ma25', 'MA(25)'], ['ma99', 'MA(99)'], ['compras', 'Mis compras'], ['trades', 'Mis trades'], ['media', 'Precio medio'], ['volumen', 'Volumen']] as const
-type Clave = (typeof IND)[number][0]
-const IND_INICIAL: Record<Clave, boolean> = { ma7: true, ma25: true, ma99: false, compras: true, trades: true, media: true, volumen: true }
+// «Mis trades» se recuerda por separado para 1D/1S (donde por defecto va oculto, porque se amontonan) y para el resto de temporalidades.
+type Clave = (typeof IND)[number][0] | 'tradesLargo'
+const IND_INICIAL: Record<Clave, boolean> = { ma7: true, ma25: true, ma99: false, compras: true, trades: true, tradesLargo: false, media: true, volumen: true }
 const CLAVE_LS = 'grafico-indicadores'
 
 function leerInd(): Record<Clave, boolean> {
@@ -34,8 +35,11 @@ function guardarCache(m: string, i: number, v: Vela[]) {
   try { localStorage.setItem(cacheKey(m, i), JSON.stringify(v.slice(-300))) } catch { /* sin espacio o sin permiso */ }
 }
 
-/** Velas de 1 y 5 minutos: carga inicial por REST (API pública de Kraken) y luego la vela en curso en directo por WebSocket. */
-function useVelasDirecto(activo: boolean, moneda: 'EUR' | 'USD', intervalo: 1 | 5, demo: boolean) {
+/**
+ * Velas por REST (API pública de Kraken) y, si `enVivo` (solo 1m y 5m), la vela en curso en directo por WebSocket.
+ * También sirve de respaldo para las temporalidades que el servidor aún no ha guardado.
+ */
+function useVelasDirecto(activo: boolean, moneda: 'EUR' | 'USD', intervalo: number, demo: boolean, enVivo = true) {
   const [velas, setVelas] = useState<Vela[]>([])
   const [estado, setEstado] = useState<'cargando' | 'directo' | 'sin-directo'>('cargando')
   useEffect(() => {
@@ -61,12 +65,12 @@ function useVelasDirecto(activo: boolean, moneda: 'EUR' | 'USD', intervalo: 1 | 
       })
       .catch(() => { if (vivo) setEstado('sin-directo') })
       .finally(() => {
-        if (!vivo) return
+        if (!vivo || !enVivo || (intervalo !== 1 && intervalo !== 5)) return
         // Mientras la pantalla está abierta: la vela en curso en directo. Se desconecta al salir o al pasar a segundo plano.
-        baja = suscribirOhlc(moneda, intervalo, (nuevas) => { setVelas((prev) => fusionarVelas(prev, nuevas)); setEstado('directo') })
+        baja = suscribirOhlc(moneda, intervalo as 1 | 5, (nuevas) => { setVelas((prev) => fusionarVelas(prev, nuevas)); setEstado('directo') })
       })
     return () => { vivo = false; baja?.() }
-  }, [activo, moneda, intervalo, demo])
+  }, [activo, moneda, intervalo, demo, enVivo])
   // La caché local se escribe como mucho cada 15 s (no en cada mensaje del directo).
   const ultimaCache = useRef(0)
   useEffect(() => {
@@ -87,14 +91,17 @@ interface Props {
   /** Temporalidades que se ofrecen (por defecto, todas). */
   temporalidades?: readonly Temporalidad[]
   alto?: number
+  /** Trade seleccionado al abrir (su entrada, su salida y la línea que las une). */
+  tradeDestacado?: string
 }
 
 /** Gráfico de velas con volumen, medias móviles, marcas C/V/E/S y niveles. Lo usan el Gráfico pro y el Inicio pro. */
-export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPORALIDADES, alto = 420 }: Props) {
+export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPORALIDADES, alto = 420, tradeDestacado }: Props) {
   const v = useVista()
   const [tf, setTf] = useState<Temporalidad>(temporalidades.includes(tfInicial) ? tfInicial : temporalidades[0])
   const [ind, setInd] = useState(leerInd)
   const [seleccion, setSeleccion] = useState<Marca[] | null>(null)
+  const [tradeSel, setTradeSel] = useState<string[]>(tradeDestacado ? [tradeDestacado] : [])
   const [edicion, setEdicion] = useState<null | { tipo: 'operacion' | 'trade'; id: string }>(null)
   const [leyenda, setLeyenda] = useState<Leyenda | null>(null)
   const { moneda, res } = v
@@ -105,11 +112,22 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
 
   const esDirecto = tf === '1m' || tf === '5m'
   const doc = useMercadoDoc<{ EUR?: FilaVela[]; USD?: FilaVela[] }>(esDirecto ? '' : DOC_VELAS[tf]!)
-  const directo = useVelasDirecto(esDirecto, monedaKraken, tf === '1m' ? 1 : 5, v.demo)
+  const filasDoc = doc?.[monedaKraken]
+  const hayDoc = Boolean(filasDoc?.length)
+  // Si el servidor aún no ha guardado esta temporalidad (pasado un momento sin documento), las pide el cliente a Kraken (REST) en vez de dejar el gráfico vacío.
+  const [esperado, setEsperado] = useState(false)
+  useEffect(() => {
+    setEsperado(false)
+    if (esDirecto || hayDoc) return
+    const t = setTimeout(() => setEsperado(true), 1500)
+    return () => clearTimeout(t)
+  }, [tf, hayDoc, esDirecto, monedaKraken])
+  const usarRest = !esDirecto && !hayDoc && esperado
+  const directo = useVelasDirecto(esDirecto || usarRest, monedaKraken, MINUTOS[tf], v.demo, esDirecto)
   const velas: Vela[] = useMemo(() => {
-    if (esDirecto) return directo.velas.map((x) => ({ ...x, open: x.open * factor, high: x.high * factor, low: x.low * factor, close: x.close * factor }))
-    return aVelas(doc?.[monedaKraken] ?? [], factor)
-  }, [esDirecto, directo.velas, doc, monedaKraken, factor])
+    if (esDirecto || (usarRest && !hayDoc)) return directo.velas.map((x) => ({ ...x, open: x.open * factor, high: x.high * factor, low: x.low * factor, close: x.close * factor }))
+    return aVelas(filasDoc ?? [], factor)
+  }, [esDirecto, usarRest, hayDoc, directo.velas, filasDoc, factor])
 
   const guardarInd = (k: Clave) => setInd((s) => {
     const n = { ...s, [k]: !s[k] }
@@ -127,6 +145,31 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
   const lineasTrade = useRef<ISeriesApi<'Line'>[]>([])
   const lineasPrecio = useRef<ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>[]>([])
   const marcasActuales = useRef<Marca[]>([])
+  const gruposRef = useRef<GrupoMarcas[]>([])
+  const marcadoRef = useRef<ReturnType<typeof construirMarcas>>({ marcas: [], lineas: [] })
+  /** Pinta las marcas agrupando las que se solapan en pantalla (un marcador con el número). Se repite al hacer zoom o desplazarse. */
+  const pintarMarcas = useCallback(() => {
+    const c = chart.current, api = marcasApi.current
+    if (!c || !api) return
+    const ts = c.timeScale()
+    const { marcas } = marcadoRef.current
+    const grupos = agruparMarcas(marcas, (t) => ts.timeToCoordinate(t as UTCTimestamp), 18)
+    gruposRef.current = grupos
+    marcasActuales.current = marcas
+    api.setMarkers(grupos.map((g) => {
+      if (g.marcas.length > 1) return { time: g.time as UTCTimestamp, text: String(g.marcas.length), size: 2, position: 'aboveBar' as const, shape: 'circle' as const, color: '#E8ECF2' }
+      const m = g.marcas[0]
+      return {
+        time: m.time as UTCTimestamp, text: m.texto, size: 1,
+        position: m.tipo === 'venta' || m.tipo === 'salida' ? ('aboveBar' as const) : ('belowBar' as const),
+        shape: m.tipo === 'compra' ? ('arrowUp' as const) : m.tipo === 'venta' ? ('arrowDown' as const) : ('circle' as const),
+        color: m.tipo === 'compra' ? GAIN : m.tipo === 'venta' ? LOSS : KEY,
+      }
+    }))
+    fijarPrueba('velas:marcas', marcas.length)
+    fijarPrueba('velas:marcadores', grupos.length)
+    fijarPrueba('velas:marcas-trade', marcas.filter((m) => m.tipo === 'entrada' || m.tipo === 'salida').length)
+  }, [])
   const reencuadrar = useRef(true)
   const pasoVela = useRef(60)
 
@@ -152,13 +195,28 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
     marcasApi.current = createSeriesMarkers(vs, [])
     volSerie.current = c.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false }, 1)
     c.panes()[1]?.setStretchFactor(0.28)
-    const clic = (p: { time?: Time }) => {
-      if (p.time == null) return setSeleccion(null)
-      const t = Number(p.time)
-      const cerca = marcasActuales.current.filter((m) => Math.abs(m.time - t) <= pasoVela.current / 2)
-      setSeleccion(cerca.length ? cerca : null)
+    const clic = (p: { time?: Time; point?: { x: number; y: number } }) => {
+      if (p.time == null) { setSeleccion(null); setTradeSel([]); return }
+      let g: GrupoMarcas | undefined
+      if (p.point) {
+        let mejor = 22 // píxeles
+        for (const gr of gruposRef.current) {
+          const x = c.timeScale().timeToCoordinate(gr.time as UTCTimestamp)
+          if (x != null && Math.abs(x - p.point.x) < mejor) { mejor = Math.abs(x - p.point.x); g = gr }
+        }
+      } else {
+        const t = Number(p.time)
+        g = gruposRef.current.find((gr) => Math.abs(gr.time - t) <= pasoVela.current / 2)
+      }
+      setSeleccion(g ? g.marcas : null)
+      // La línea entrada-salida solo se ve para el trade seleccionado.
+      setTradeSel(g ? [...new Set(g.marcas.filter((m) => m.ref.tipo === 'trade').map((m) => m.ref.id))] : [])
     }
     c.subscribeClick(clic)
+    // Al hacer zoom o desplazarse cambian las distancias en pantalla: se vuelven a agrupar las marcas (como mucho una vez por fotograma).
+    let pendiente = false
+    const reagrupar = () => { if (pendiente) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; pintarMarcas() }) }
+    c.timeScale().subscribeVisibleLogicalRangeChange(reagrupar)
     // Al mantener pulsado (o con el ratón encima), la cruz enseña apertura, máximo, mínimo, cierre y volumen.
     const mover = (p: { time?: Time; seriesData: Map<unknown, unknown> }) => {
       const k = p.seriesData.get(vs) as { open: number; high: number; low: number; close: number } | undefined
@@ -166,8 +224,8 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
       setLeyenda(p.time != null && k ? { time: Number(p.time), o: k.open, h: k.high, l: k.low, c: k.close, v: vv?.value ?? 0 } : null)
     }
     c.subscribeCrosshairMove(mover as never)
-    return () => { c.unsubscribeClick(clic); c.unsubscribeCrosshairMove(mover as never); c.remove(); chart.current = null; velaSerie.current = null; volSerie.current = null; maSeries.current = {}; lineasTrade.current = []; lineasPrecio.current = [] }
-  }, [])
+    return () => { c.timeScale().unsubscribeVisibleLogicalRangeChange(reagrupar); c.unsubscribeClick(clic); c.unsubscribeCrosshairMove(mover as never); c.remove(); chart.current = null; velaSerie.current = null; volSerie.current = null; maSeries.current = {}; lineasTrade.current = []; lineasPrecio.current = [] }
+  }, [pintarMarcas])
 
   // Al cambiar de temporalidad o de moneda se vuelve a encuadrar; con las velas en directo no (así no se pierde el zoom).
   useEffect(() => { reencuadrar.current = true }, [tf, moneda])
@@ -197,6 +255,13 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
     registrarPrueba('velas:setData')
     vs.setData(lista.map(velaD))
     vol.setData(lista.map(volD))
+    if (!lista.length) { // sin velas: se limpian las series y se reinicia la escala (no se queda la de la temporalidad anterior)
+      for (const s of Object.values(maSeries.current)) s.setData([])
+      c.priceScale('right').applyOptions({ autoScale: true })
+      c.timeScale().resetTimeScale()
+      reencuadrar.current = true
+      return
+    }
     vol.applyOptions({ visible: ind.volumen })
     for (const [k, n, color] of [['ma7', 7, '#FFD166'], ['ma25', 25, '#C792EA'], ['ma99', 99, '#FFFFFF']] as const) {
       let s = maSeries.current[k]
@@ -216,32 +281,30 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
   const nivelPrecio = nivel && base ? nivel.precio * (base[moneda] / base.EUR) : null
   const mediaPrecio = res && res.btc > 0 ? res.precioMedioReal : null
   // Marcas y líneas de trade: se calculan con los precios del servidor y solo se redibujan si su contenido cambia (no en cada precio en vivo).
-  const marcado = useMemo(
-    () => construirMarcas({ velas, ops: v.ops, trades: v.trades, moneda, precios: base, verCompras: ind.compras, verTrades: ind.trades }),
-    [velas, v.ops, v.trades, moneda, base, ind.compras, ind.trades],
-  )
+  // «Mis trades» va oculto por defecto en 1D y 1S (se amontonan); un trade seleccionado se ve siempre, con su línea entrada-salida.
+  const tfLargo = tf === '1D' || tf === '1S'
+  const verTrades = tfLargo ? ind.tradesLargo : ind.trades
+  const tradesMarcar = useMemo(() => (verTrades ? v.trades : v.trades.filter((t) => tradeSel.includes(t.id))), [verTrades, v.trades, tradeSel])
+  const marcado = useMemo(() => {
+    const r = construirMarcas({ velas, ops: v.ops, trades: tradesMarcar, moneda, precios: base, verCompras: ind.compras, verTrades: tradesMarcar.length > 0 })
+    return { marcas: r.marcas, lineas: r.lineas.filter((l) => tradeSel.includes(l.id)) } // las líneas punteadas, solo del trade seleccionado
+  }, [velas, v.ops, tradesMarcar, tradeSel, moneda, base, ind.compras])
   const marcadoClave = useMemo(() => JSON.stringify(marcado), [marcado])
-  const marcadoRef = useRef(marcado)
   marcadoRef.current = marcado
   useEffect(() => {
     const c = chart.current
     if (!c) return
     registrarPrueba('velas:marcas-redibujadas')
-    const { marcas, lineas } = marcadoRef.current
-    marcasActuales.current = marcas
-    marcasApi.current?.setMarkers(marcas.map((m) => ({
-      time: m.time as UTCTimestamp, text: m.texto, size: 1,
-      position: m.tipo === 'venta' || m.tipo === 'salida' ? ('aboveBar' as const) : ('belowBar' as const),
-      shape: m.tipo === 'compra' ? ('arrowUp' as const) : m.tipo === 'venta' ? ('arrowDown' as const) : ('circle' as const),
-      color: m.tipo === 'compra' ? GAIN : m.tipo === 'venta' ? LOSS : KEY,
-    })))
+    const { lineas } = marcadoRef.current
+    pintarMarcas()
+    fijarPrueba('velas:lineas', lineas.length)
     lineasTrade.current.forEach((s) => c.removeSeries(s))
     lineasTrade.current = lineas.map((l) => {
       const s = c.addSeries(LineSeries, { color: KEY, lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })
       s.setData([{ time: l.desde.time as UTCTimestamp, value: l.desde.precio }, { time: l.hasta.time as UTCTimestamp, value: l.hasta.precio }])
       return s
     })
-  }, [marcadoClave])
+  }, [marcadoClave, pintarMarcas])
   // Líneas horizontales: solo si cambian sus valores.
   useEffect(() => {
     const vs = velaSerie.current
@@ -259,9 +322,13 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
       <div className="seg" role="group" aria-label="Temporalidad" style={{ alignSelf: 'stretch', justifyContent: 'space-between' }}>
         {temporalidades.map((t) => <button key={t} aria-pressed={tf === t} onClick={() => setTf(t)} style={{ padding: '0 9px', flex: 1 }}>{t}</button>)}
       </div>
+      {usarRest && !hayDoc && <p className="notice" role="status">{directo.velas.length ? 'Velas de Kraken: el servidor aún no ha guardado esta temporalidad.' : directo.estado === 'cargando' ? 'Cargando velas…' : 'No se han podido cargar las velas de esta temporalidad.'}</p>}
       {esDirecto && <p className="notice" role="status">{directo.estado === 'directo' ? 'En directo' : directo.estado === 'cargando' ? 'Cargando velas…' : v.demo ? 'Velas de ejemplo (modo demo)' : 'Sin directo · últimas velas guardadas'}</p>}
       <div className="chips" aria-label="Indicadores">
-        {IND.map(([k, l]) => <button key={k} type="button" className="opt" aria-pressed={ind[k]} onClick={() => guardarInd(k)}>{l}</button>)}
+        {IND.map(([k, l]) => {
+          const clave: Clave = k === 'trades' && tfLargo ? 'tradesLargo' : k
+          return <button key={k} type="button" className="opt" aria-pressed={ind[clave]} onClick={() => guardarInd(clave)}>{l}</button>
+        })}
       </div>
       <div className="card velas-caja" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
         {leyenda && (
@@ -270,12 +337,12 @@ export default function GraficoVelas({ tfInicial = '1D', temporalidades = TEMPOR
             {' · A '}{dec(leyenda.o)}{' · M '}{dec(leyenda.h)}{' · m '}{dec(leyenda.l)}{' · C '}{dec(leyenda.c)}{' · Vol '}{vol(leyenda.v)}
           </div>
         )}
-        <div ref={caja} style={{ height: alto, touchAction: 'pan-y' }} role="img" aria-label={`Gráfico de velas de BTC en ${moneda}, temporalidad ${tf}`} />
+        <div ref={caja} data-velas={velas.length} data-tf={tf} data-origen={esDirecto ? 'directo' : hayDoc ? 'servidor' : usarRest ? 'kraken' : 'esperando'} style={{ height: alto, touchAction: 'pan-y' }} role="img" aria-label={`Gráfico de velas de BTC en ${moneda}, temporalidad ${tf}`} />
         {!velas.length && <p className="muted" style={{ padding: 16 }}>{esDirecto ? 'Cargando velas…' : 'Las velas de esta temporalidad aparecerán tras la próxima actualización del servidor.'}</p>}
       </div>
       {seleccion && (
         <section className="card stack" aria-live="polite" aria-label="Detalle de la marca">
-          <div className="row between"><h3>Tus marcas</h3><button className="btn-ghost" onClick={() => setSeleccion(null)}>Cerrar</button></div>
+          <div className="row between"><h3>Tus marcas</h3><button className="btn-ghost" onClick={() => { setSeleccion(null); setTradeSel([]) }}>Cerrar</button></div>
           {seleccion.map((m, i) => (
             <div key={i} className="stack" style={{ gap: 4 }}>
               <p className="num" style={{ fontSize: 13 }}>{m.detalle}</p>
