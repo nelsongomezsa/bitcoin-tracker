@@ -5,6 +5,7 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 ## 23 de noviembre de 2026
 
 ### Trading (nuevo apartado)
+- **Sumar Trading a la cartera:** la opción «Sumar los BTC ganados con trades a mi cartera» viene **desactivada** en las cuentas nuevas. Activada, Inicio (en vista simple y en pro) enseña una tabla con «Cartera», «Trading (neto)» y «Total», en BTC y en valor, en la moneda elegida. El neto de Trading es ganado menos perdido, así que **las pérdidas restan**. El **precio medio de compra no cambia** nunca por los trades: solo cambian el total en BTC y su valor.
 - **Resultado en dinero (opcional):** en un trade cerrado puedes escribir cuánto ganaste (positivo) o perdiste (negativo) en EUR, USD o AUD; la moneda por defecto es la de tu cuenta. Los BTC del trade son **resultado ÷ precio de BTC en esa moneda**, redondeados a 8 decimales.
 - **De dónde sale el precio:** de la vela de Kraken del par correspondiente (XBT/EUR, XBT/USD o XBT/AUD) en el momento del cierre: la de 1 minuto si es reciente, la de 1 hora hasta unas 4 semanas y la diaria si no hay hora o es más antiguo (se usa el precio medio ponderado de esa vela). Si no hay vela o no hay conexión, se usa el precio de salida del trade convertido con el cambio disponible. El precio es editable.
 - **Antes de guardar** se ve la cuenta («−100 € → −0,00123001 BTC a 81.300 €/BTC») para confirmarla o cambiarla. Se guardan el importe, la moneda y el precio usado, y el detalle del trade los enseña. Los BTC escritos a mano siguen mandando sobre este cálculo.
@@ -45,6 +46,8 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 - Las compras, las ventas y los trades pueden llevar una **hora** (HH:MM). Es opcional: si está, la vista pro la muestra junto a la fecha en el historial; si no, solo la fecha. Los trades tienen hora de inicio y de cierre. La hora no cambia ningún cálculo.
 
 ### Corregido
+- **Histograma de compras (Estadísticas):** un precio justo en el límite entre dos intervalos caía a veces en el intervalo anterior por un redondeo de coma flotante (por ejemplo, con mínimo 46.014,48, máximo 46.218,56 y una compra a 46.039,99). Ahora los intervalos son [a, b), el último incluye el máximo, y el cálculo usa enteros. Era la causa de un test de la auditoría que fallaba de forma intermitente.
+- **Auditoría reproducible:** los datos aleatorios de los tests de la auditoría usan una semilla fija (`FC_SEED` permite probar otras), de modo que cada ejecución es igual.
 - **Gráfico de Inicio «rayado» o que «se volvía loco»:** con el precio en vivo, el gráfico se destruía y se volvía a crear cada segundo (unas 30 veces en 30 segundos), repitiendo la animación de dibujado mientras se movía con el dedo. Ahora se crea una sola vez al abrir la pantalla y cada precio nuevo solo actualiza el último punto; al salir de la pantalla se destruye.
 - **Gráfico pro (velas):** las marcas, las líneas de los trades y los niveles ya no se redibujan con cada precio en vivo; las velas en directo actualizan solo la última vela, se descartan los tiempos repetidos o desordenados y la copia local de las velas se guarda como mucho cada 15 segundos.
 - **Gestos en el móvil:** en los gráficos, el scroll vertical mueve la página y el gráfico solo se desplaza en horizontal o con el pellizco; la rueda del ratón ya no atrapa el scroll de la página.
@@ -58,7 +61,7 @@ Todos los cambios importantes de Bitcoin Tracker, de la versión más reciente a
 - **Calculadora de control** independiente de la app, con aritmética decimal exacta, para comprobar los cálculos de compras, FIFO, plan, calculadoras, avisos y trading.
 - **Tests de propiedades:** cientos de carteras y de conjuntos de trades aleatorios, y reglas que siempre deben cumplirse (por ejemplo, que el neto es lo ganado menos lo perdido).
 - **Cuenta vacía:** una pasada completa en el móvil con una cuenta sin compras, ventas ni trades (demo vacía y, con `npm run auditoria:vacia`, un usuario nuevo en el emulador de Firebase). Comprueba sin errores en consola, un solo gráfico por pantalla, que el gráfico de Inicio no se rehace con 30 segundos de precio en vivo y que «Abrir gráfico pro» abre.
-- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **339 comprobaciones, 0 diferencias**. Además hay **250 tests automáticos** y **55 tests de las reglas de seguridad** de la base de datos.
+- **Auditoría en el navegador** (modo demo, móvil): lee las cifras que muestra cada pantalla y las compara con la calculadora de control, también en la vista pro. Resultado actual: **354 comprobaciones, 0 diferencias**. Además hay **265 tests automáticos** y **55 tests de las reglas de seguridad** de la base de datos.
 
 ## 22 de noviembre de 2026
 

@@ -206,3 +206,7 @@ td button { min-height: 36px; min-width: 36px; padding: 0 6px; }
 /* La cabecera de Inicio lleva moneda + PRO + ocultar cifras: que quepa en 390 px */
 .cabecera .row { gap: 6px; flex-wrap: nowrap; }
 .cabecera .seg button { padding: 0 10px; }
+.desglose th { font-size: 11px; font-weight: 500; color: var(--muted); text-align: left; }
+.desglose th.r, .desglose td { text-align: right; }
+.desglose tbody th { font-size: 12px; text-align: left; }
+.desglose td, .desglose th { padding: 3px 0 3px 10px; border: none; white-space: nowrap; }

@@ -264,3 +264,23 @@ export function resumenPorMes(trades: Trade[], precios: PreciosBtc, vista: Moned
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([mes, fs]) => ({ mes, n: fs.length, btc: fs.reduce((s, x) => s + x.btc, 0), pctMedia: fs.reduce((s, x) => s + x.calculo.pct, 0) / fs.length }))
 }
+
+export interface DesgloseCartera {
+  cartera: { btc: number; valor: number }
+  /** Neto de Trading (con signo: las pérdidas restan). */
+  trading: { btc: number; valor: number }
+  total: { btc: number; valor: number }
+  /** El precio medio de compra: sale solo de las compras y no cambia por los trades. */
+  precioMedio: number
+}
+
+/**
+ * «Cartera», «Trading (neto)» y «Total» cuando se suma el trading a la cartera. `tradingNetoBtc` es el neto de Trading (ganado − perdido).
+ * Con `sumar` apagado, el trading no entra: el total es la cartera. El precio medio no se toca nunca.
+ */
+export function desgloseCartera(res: { btc: number; valorHoy: number; precioMedioReal: number }, tradingNetoBtc: number, precio: number, sumar: boolean): DesgloseCartera {
+  const neto = sumar ? tradingNetoBtc : 0
+  const trading = { btc: neto, valor: neto * precio }
+  const cartera = { btc: res.btc, valor: res.valorHoy }
+  return { cartera, trading, total: { btc: cartera.btc + trading.btc, valor: cartera.valor + trading.valor }, precioMedio: res.precioMedioReal }
+}

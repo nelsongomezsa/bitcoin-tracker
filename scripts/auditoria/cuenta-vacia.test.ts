@@ -138,6 +138,11 @@ async function recorrer(page: Page, errores: string[], etiqueta: string, { esper
     await page.getByRole('heading', { name: marca, level: 1 }).waitFor({ timeout: 10000 })
     expect(await graficos(page), `${etiqueta}: gráficos en ${marca}`).toBeLessThanOrEqual(1)
   }
+  // Cuenta nueva: «Sumar los BTC ganados con trades a mi cartera» viene desactivado y Inicio no enseña el desglose
+  await irA(page, '/ajustes')
+  expect(await page.getByRole('checkbox', { name: /Sumar los BTC ganados con trades a mi cartera/ }).isChecked(), `${etiqueta}: «Sumar trading a la cartera» desactivado por defecto`).toBe(false)
+  await irA(page, '/')
+  expect(await page.getByRole('table', { name: 'Cartera, Trading y Total' }).count(), `${etiqueta}: sin desglose con el ajuste apagado`).toBe(0)
   expect(await page.getByText('Todavía no has apuntado ningún trade').count(), `${etiqueta}: estado vacío de Trading`).toBeGreaterThanOrEqual(0)
 
   // ── Inicio en vista pro: un solo gráfico y el mismo estado vacío ──

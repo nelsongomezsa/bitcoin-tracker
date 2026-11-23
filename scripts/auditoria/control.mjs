@@ -206,8 +206,10 @@ export function histograma(ops, precioActual, grupos = 8) {
   const min = Decimal.min(...precios), max = Decimal.max(...precios)
   const ancho = max.minus(min).div(grupos).isZero() ? D(1) : max.minus(min).div(grupos)
   const bins = Array.from({ length: grupos }, (_, i) => ({ desde: min.plus(ancho.mul(i)), hasta: min.plus(ancho.mul(i + 1)), compras: 0, importe: CERO }))
+  const span = max.minus(min)
   for (const o of compras) {
-    const i = Math.min(grupos - 1, Math.floor(D(o.precio).minus(min).div(ancho).toNumber()))
+    // Intervalos [desde, hasta) (el último incluye el máximo): índice = suelo de grupos × (precio − mín) / (máx − mín), con una sola división exacta.
+    const i = span.isZero() ? 0 : Math.min(grupos - 1, D(grupos).mul(D(o.precio).minus(min)).div(span).floor().toNumber())
     bins[i].compras++
     bins[i].importe = bins[i].importe.plus(o.cantidad)
   }

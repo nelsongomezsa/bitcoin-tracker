@@ -12,6 +12,9 @@ import { mercadoDemo, operacionesDemo, planDemo } from '../../state/demoData'
 import { dinero, porcentaje } from '../format'
 import * as T from '../trading'
 
+// Datos aleatorios reproducibles: la misma semilla en cada ejecución. Para explorar otras: FC_SEED=123 npm run auditoria
+fc.configureGlobal({ seed: Number(process.env.FC_SEED ?? 20261123) })
+
 // Tolerancias del encargo
 const EUR = 0.01 // importes
 const BTC = 1e-8

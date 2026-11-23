@@ -13,7 +13,8 @@ import { InicioEsqueleto } from '../components/Esqueleto'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
 import { btcConSigno, claseSigno, dinero, fechaCorta, flecha, porcentaje, porcentajeConSigno, horaCorta, OCULTO } from '../lib/format'
-import { etiquetaTrade, filasTrades } from '../lib/trading'
+import { desgloseCartera, etiquetaTrade, filasTrades } from '../lib/trading'
+import DesgloseCartera from '../components/DesgloseCartera'
 import { convertir, filaCompra, ordenarPorFecha, proximoNivel, serieCartera, type Operacion } from '../lib/calculos'
 
 const minutosDesde = (d: Date) => {
@@ -42,7 +43,8 @@ export default function Inicio() {
 
   // Si está activado, los BTC ganados con trades se suman a la cartera (el precio medio de las compras no cambia).
   const sumaTrading = v.perfil.sumarTradingACartera && v.trading ? v.trading : null
-  const extraValor = sumaTrading ? sumaTrading.netoValor : 0
+  const desglose = res ? desgloseCartera(res, sumaTrading ? sumaTrading.neto : 0, precio, Boolean(sumaTrading)) : null
+  const extraValor = desglose ? desglose.trading.valor : 0
   const ultimosTrades = v.perfil.mostrarTrading && precios ? filasTrades(v.trades, precios, moneda).slice(-3).reverse() : []
   const ultimas = ordenarPorFecha(v.ops.filter((o) => o.tipo === 'compra')).slice(-5).reverse()
   const nivel = res ? proximoNivel(v.plan, v.operaciones, v.precios?.EUR ?? 0, v.precios ?? undefined) : null
@@ -85,7 +87,7 @@ export default function Inicio() {
             {flecha(res.ganancia + extraValor)} {v.$s(res.ganancia + extraValor)} <span className="num" style={{ fontSize: 15 }}>({v.pct(res.invertido > 0 ? (res.ganancia + extraValor) / res.invertido : res.rentabilidad)})</span>
           </div>
         )}
-        {sumaTrading && <div className="muted num" style={{ fontSize: 13 }}>de trading: {v.btcS(sumaTrading.neto)}</div>}
+        {sumaTrading && desglose && <DesgloseCartera d={desglose} />}
         <div className="grid2">
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Metido</span><span className="num">{res ? v.$(res.invertido) : '—'}</span></div>
           <div className="stat"><span className="muted" style={{ fontSize: 12 }}>Precio de BTC</span>{precio ? <PrecioVivo valor={precio} texto={dinero(precio, moneda, 0)} /> : <span className="num">—</span>}</div>

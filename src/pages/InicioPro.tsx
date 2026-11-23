@@ -11,7 +11,8 @@ import ErrorBoundary from '../components/ErrorBoundary'
 import { useTirarRefrescar } from '../hooks/useTirarRefrescar'
 import { MONEDAS } from '../lib/schemas'
 import { btcDeCompra, btcDeVenta, calcularFifo, estadoNiveles, filaCompra, ordenarPorFecha, progresoDca, type Operacion } from '../lib/calculos'
-import { etiquetaTrade, filasTrades } from '../lib/trading'
+import { desgloseCartera, etiquetaTrade, filasTrades } from '../lib/trading'
+import DesgloseCartera from '../components/DesgloseCartera'
 import { btc as fBtc, btcConSigno, claseSigno, dinero, fechaConHora, fechaCorta, flecha, hoyISO, OCULTO } from '../lib/format'
 import type { Temporalidad } from '../lib/velas'
 
@@ -28,8 +29,9 @@ export default function InicioPro() {
   const { dist, refrescando } = useTirarRefrescar(v.refrescar)
   const { res, moneda, precio } = v
   const oculto = (s: string) => (v.privado ? OCULTO : s)
-  const valor = res ? res.valorHoy + v.extraValor : 0
-  const pnl = res ? res.ganancia + v.extraValor : 0
+  const desglose = res ? desgloseCartera(res, v.perfil.sumarTradingACartera && v.trading ? v.trading.neto : 0, precio, Boolean(v.perfil.sumarTradingACartera && v.trading)) : null
+  const valor = desglose ? desglose.total.valor : 0
+  const pnl = res ? res.ganancia + (desglose?.trading.valor ?? 0) : 0
   const pnlPct = res && res.invertido > 0 ? pnl / res.invertido : res?.rentabilidad ?? 0
   const cambio24 = v.ticks24h[moneda === 'USD' ? 'USD' : 'EUR']?.cambioPct
   const cambioDia = cambio24 != null && Number.isFinite(cambio24) ? cambio24 / 100 : (v.mercado?.cambio24h ?? 0)
@@ -72,7 +74,7 @@ export default function InicioPro() {
           </tbody>
         </table>
       </section>
-      {v.perfil.sumarTradingACartera && v.trading && <p className="pro-et num">de trading: {v.btcS(v.trading.neto)}</p>}
+      {v.perfil.sumarTradingACartera && v.trading && desglose && <section className="card" aria-label="Cartera, Trading y Total"><DesgloseCartera d={desglose} /></section>}
 
       <section className="card pro-par" aria-label="BTC en vivo">
         <div className="row between">

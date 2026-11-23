@@ -482,8 +482,13 @@ export function histogramaCompras(ops: Operacion[], precioActual: number, grupos
   const min = Math.min(...precios), max = Math.max(...precios)
   const ancho = (max - min) / grupos || 1
   const bins = Array.from({ length: grupos }, (_, i) => ({ desde: min + i * ancho, hasta: min + (i + 1) * ancho, compras: 0, importe: 0 }))
+  // Cada intervalo es [desde, hasta) y el último incluye el máximo. El índice se calcula con enteros (precio en millonésimas):
+  // con coma flotante, un valor justo en el límite podía caer a veces en el intervalo anterior.
+  const aEntero = (x: number) => Math.round(x * 1e6)
+  const minE = aEntero(min), spanE = aEntero(max) - minE
   for (const o of compras) {
-    const i = Math.min(grupos - 1, Math.floor((o.precio - min) / ancho))
+    const num = grupos * (aEntero(o.precio) - minE)
+    const i = spanE <= 0 ? 0 : Math.min(grupos - 1, (num - (num % spanE)) / spanE)
     bins[i].compras++
     bins[i].importe += o.cantidad
   }

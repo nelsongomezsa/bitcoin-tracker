@@ -324,3 +324,32 @@ describe('hora opcional de las operaciones', () => {
     expect(fechaConHora('2025-03-01', '')).toBe('01/03/2025')
   })
 })
+
+describe('histograma de compras: un valor justo en el límite va siempre al intervalo que empieza ahí ([a, b))', () => {
+  const compra = (precio: number, id = String(precio)) => ({ id, tipo: 'compra' as const, fecha: '2025-01-01', cantidad: 100, comision: 0, precio, moneda: 'EUR' as const })
+  // Casos que con coma flotante caían en el intervalo anterior (números inventados): [mínimo, valor en el límite, máximo, intervalo esperado]
+  const casos: [number, number, number, number][] = [
+    [46014.48, 46039.99, 46218.56, 1], [6966.99, 7139.19, 7196.59, 6], [52270.9, 52305.85, 52364.1, 3],
+    [33007.01, 33087.32, 33221.17, 3], [16513.7, 16520.21, 16521.14, 7], [29035.72, 29049.64, 29063.56, 4],
+  ]
+  it.each(casos)('mín %d, límite %d, máx %d → intervalo %d', (min, limite, max, esperado) => {
+    const h = histogramaCompras([compra(min), compra(limite), compra(max)], 50000, 8)
+    expect(h.bins[esperado].compras).toBe(1 + (esperado === 7 ? 1 : 0)) // el límite (y, en el último, también el máximo)
+    expect(h.bins.reduce((s, b) => s + b.compras, 0)).toBe(3)
+    expect(h.bins[0].compras).toBe(1) // el mínimo, siempre en el primero
+    expect(h.bins[7].compras).toBeGreaterThanOrEqual(1) // el máximo, siempre en el último
+  })
+  it('todos los límites interiores de 8 intervalos: cada uno va al que empieza ahí', () => {
+    for (const [minC, m] of [[4601448, 25499], [696699, 28700], [5227090, 11650], [3300701, 26770]]) {
+      const ops = [compra(minC / 100)]
+      for (let k = 1; k < 8; k++) ops.push(compra((minC + k * m) / 100))
+      ops.push(compra((minC + 8 * m) / 100))
+      const b = histogramaCompras(ops, 1, 8).bins
+      expect(b.map((x) => x.compras), `mín ${minC} paso ${m}`).toEqual([1, 1, 1, 1, 1, 1, 1, 2])
+    }
+  })
+  it('un solo precio (o todos iguales): todo en el primer intervalo; sin compras, vacío', () => {
+    expect(histogramaCompras([compra(100), compra(100, 'b')], 1, 8).bins.map((x) => x.compras)).toEqual([2, 0, 0, 0, 0, 0, 0, 0])
+    expect(histogramaCompras([], 1, 8).bins).toEqual([])
+  })
+})
